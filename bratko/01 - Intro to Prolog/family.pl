@@ -28,8 +28,26 @@ sister(Sister, Sibling) :-
     female(Sister),
     dif(Sister, Sibling).
 
-ancestor(Ancestor, Successor) :-
-    parent(Ancestor, Successor).
-ancestor(Ancestor, Successor) :-
-    parent(Ancestor, Intermediate),
-    ancestor(Intermediate, Successor).
+anc1(X, Y) :-
+    parent(X, Y).
+anc1(X, Y) :-
+    parent(X, Z),
+    anc1(Z, Y).
+
+anc2(X, Y) :-
+    parent(X, Z),
+    anc2(Z, Y).
+anc2(X, Y) :-
+    parent(X, Y).
+
+anc3(X, Y) :-
+    parent(X, Y).
+anc3(X, Y) :-
+    anc3(Z, Y),
+    parent(X, Z).
+
+anc4(X, Y) :-
+    anc4(Z, Y),
+    parent(X, Z).
+anc4(X, Y) :-
+    parent(X, Y).
