@@ -57,3 +57,15 @@ between_inclusive(N1, N2, X) :-
     N1<N2,
     NewN1 is N1+1,
     between_inclusive(NewN1, N2, X).
+
+:- op(600, fx, if).
+:- op(400, xfx, then).
+:- op(300, xfx, else).
+:- op(200, xfx, :=).
+:- op(200, xfx, >>).
+
+if X >> Y then Z := Z else Z := _ :-
+    X > Y.
+
+if X >> Y then Z := _ else Z := Z :-
+    X =< Y.
