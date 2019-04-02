@@ -4,12 +4,13 @@ solution([X/Y|Others]) :-
   member(Y, [1, 2, 3, 4, 5, 6, 7, 8]),
   noattack(X/Y, Others).
 
-time_solutions(S, _) :-
+time_solutions(_) :-
   statistics(runtime, _),
+  template(S),
   solution(S),
   fail.
 
-time_solutions(_, T) :-
+time_solutions(T) :-
   statistics(runtime, [_, T]).
 
 
