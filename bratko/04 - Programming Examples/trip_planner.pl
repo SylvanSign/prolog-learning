@@ -55,3 +55,30 @@ before(Time1, Time2) :-
 list([]).
 list([_|T]) :-
     list(T).
+
+% Exercise 4.3
+a(Start, End, Schedule, Time) :-
+    statistics(runtime, _),
+    schedule(riva at Start, riva at End, Schedule),
+    member(arrive(malcesine at _), Schedule),
+    before(17:00, Start),
+    statistics(runtime, [_, Time]).
+
+b(Start, End, Schedule, Time) :-
+    statistics(runtime, _),
+    sail(riva at Start, _),
+    before(17:00, Start),
+    schedule(riva at Start, riva at End, Schedule),
+    member(arrive(malcesine at _), Schedule),
+    statistics(runtime, [_, Time]).
+
+c(Start, End, Schedule, Time) :-
+    statistics(runtime, _),
+    before(17:00, Start),
+    schedule(riva at Start, riva at End, Schedule),
+    member(arrive(malcesine at _), Schedule),
+    statistics(runtime, [_, Time]).
+
+max_length(List, Length) :-
+    length(MaxList, Length),
+    append(List, _, MaxList).
