@@ -31,20 +31,37 @@ no_overlap(rect(pos(X1, Y1), dim(Dx1, Dy1)), rect(pos(X2, Y2), dim(Dx2, Dy2))) :
       )
     }.
 
-fit(BoxName, Block1, Block2, Block3, Block4) :-
+fit(BoxName, Blocks) :-
     box(BoxName, Dim),
     Box=rect(pos(0.0, 0.0), Dim),
-    block_rectangle(b1, Block1),
-    inside(Block1, Box),
-    block_rectangle(b2, Block2),
-    inside(Block2, Box),
-    block_rectangle(b3, Block3),
-    inside(Block3, Box),
-    block_rectangle(b4, Block4),
-    inside(Block4, Box),
-    no_overlap(Block1, Block2),
-    no_overlap(Block1, Block3),
-    no_overlap(Block1, Block4),
-    no_overlap(Block2, Block3),
-    no_overlap(Block2, Block4),
-    no_overlap(Block3, Block4).
+    fit_helper(Box, Blocks).
+
+fit_helper(_, []).
+fit_helper(Box, [BlockName/Rect|Rest]) :-
+    fit_helper(Box, Rest),
+    block_rectangle(BlockName, Rect),
+    inside(Rect, Box),
+    no_overlaps(Rect, Rest).
+
+no_overlaps(_, []).
+no_overlaps(Rect, [_/OtherRect|Rest]) :-
+    no_overlap(Rect, OtherRect),
+    no_overlaps(Rect, Rest).
+
+% fit(BoxName, Block1, Block2, Block3, Block4) :-
+%     box(BoxName, Dim),
+%     Box=rect(pos(0.0, 0.0), Dim),
+%     block_rectangle(b1, Block1),
+%     inside(Block1, Box),
+%     block_rectangle(b2, Block2),
+%     inside(Block2, Box),
+%     block_rectangle(b3, Block3),
+%     inside(Block3, Box),
+%     block_rectangle(b4, Block4),
+%     inside(Block4, Box),
+%     no_overlap(Block1, Block2),
+%     no_overlap(Block1, Block3),
+%     no_overlap(Block1, Block4),
+%     no_overlap(Block2, Block3),
+%     no_overlap(Block2, Block4),
+%     no_overlap(Block3, Block4).
