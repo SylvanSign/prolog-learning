@@ -23,7 +23,7 @@ gateway_url(URL) :-
              _{url:URL},
              [json_object(dict)]).
 
-connect(Fresh) :-
+connect(Fresh, Fresh1) :-
     gateway_url(GatewayURL),
     string_concat(GatewayURL, "/?v=6&encoding=json", WebsocketURL),
     http_open_websocket(WebsocketURL, WebSocket, []),
@@ -31,33 +31,56 @@ connect(Fresh) :-
     HeartbeatMs is Response.data.d.heartbeat_interval / 1_000,
     heartbeat(WebSocket, HeartbeatMs),
     identify(WebSocket),
-    ws_receive(WebSocket, Fresh, [format(json)]).
+    ws_receive(WebSocket, Fresh, [format(json)]),
+    ws_receive(WebSocket, Fresh1, [format(json)]).
 
 identify(WebSocket) :-
     ws_send(WebSocket, _{
-        op: 2,
+        opcode: 2,
+        format: json,
         data: _{
-            token: "NTg5NTQzMjA3Mzc3ODI5OTAx.XQcHTg.kTmlco1Zg6VJbQX33nEhsrrhCJA"
+            op: 2,
+            d: _{
+                token: "NTg5NTQzMjA3Mzc3ODI5OTAx.XQcHTg.kTmlco1Zg6VJbQX33nEhsrrhCJA",
+                compress: false,
+                properties: _{
+                    '$os': windows,
+                    '$browser': adama,
+                    '$device': adama
+                }
+            }
         }
     }).
 
 heartbeat(WebSocket, HeartbeatMs) :-
     assert(alive),
+    assert(last_heartbeat_acked),
     thread_create(pulse(WebSocket, HeartbeatMs, null), _).
 
 pulse(WebSocket, HeartbeatMs, D) :-
     alive,
     (   last_heartbeat_acked
-    ->  writeln("making a heartbeat"),
-        ws_send(WebSocket, _{op: 1, d: D}),
-        sleep(HeartbeatMs),
+    ->  retractall(last_heartbeat_acked),
+        writeln("making a heartbeat"),
+        ws_send(WebSocket, _{
+            opcode: 1,
+            format: json,
+            data: _{
+                op: 1,
+                d: D
+            }
+        }),
+        writeln("now sleep"),
+        sleep(5),
+        writeln("done sleep"),
         pulse(WebSocket, HeartbeatMs, D)
     ;   reconnect(WebSocket)
     ).
 
 kill :-
-    retract(alive).
+    retractall(alive).
 
 reconnect(WebSocket) :-
     ws_close(WebSocket, 9000, ack_missed),
-    connect.
+    writeln(connect).
+    % connect.
