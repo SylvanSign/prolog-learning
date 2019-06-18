@@ -23,7 +23,7 @@ gateway_url(URL) :-
              _{url:URL},
              [json_object(dict)]).
 
-connect(Fresh, Fresh1, Fresh2) :-
+connect :-
     gateway_url(GatewayURL),
     string_concat(GatewayURL, "/?v=6&encoding=json", WebsocketURL),
     http_open_websocket(WebsocketURL, WebSocket, []),
@@ -31,9 +31,33 @@ connect(Fresh, Fresh1, Fresh2) :-
     HeartbeatMs is Response.data.d.heartbeat_interval / 1_000,
     heartbeat(WebSocket, HeartbeatMs),
     identify(WebSocket),
-    ws_receive(WebSocket, Fresh, [format(json)]),
-    ws_receive(WebSocket, Fresh1, [format(json)]),
-    ws_receive(WebSocket, Fresh2, [format(json)]).
+    loop(WebSocket).
+
+loop(WebSocket) :-
+    ws_receive(WebSocket, Response, [format(json)]),
+    handle_message(Response),
+    !,
+    loop(WebSocket).
+
+handle_message(Response) :-
+    Op = Response.data.op,
+    handle_event(Op, Response.data).
+
+handle_event(0, Data) :-
+    T = Data.t,
+    handle_op0_event(T, Data).
+handle_event(11, Data) :-
+    assert(last_heartbeat_acked).
+handle_event(Op, Data) :-
+    writeln(Op),
+    writeln(Data).
+
+handle_op0_event("READY", Data) :-
+    SessionId = Data.d.session_id,
+    write(SessionId).
+handle_op0_event("GUILD_CREATE", Data) :-
+    SessionId = Data.d.session_id,
+    write(SessionId).
 
 identify(WebSocket) :-
     EventData = _{
@@ -61,7 +85,7 @@ pulse(WebSocket, HeartbeatMs, D) :-
         payload(1, D, Payload),
         ws_send(WebSocket, Payload),
         writeln("now sleep"),
-        sleep(5),
+        sleep(HeartbeatMs),
         writeln("done sleep"),
         NewD is D + 1,
         pulse(WebSocket, HeartbeatMs, NewD)
@@ -73,7 +97,7 @@ kill :-
 
 reconnect(WebSocket) :-
     ws_close(WebSocket, 9000, ack_missed),
-    writeln(connect).
+    writeln('would reconnect here').
     % connect.
 
 payload(Opcode, EventData, _{
