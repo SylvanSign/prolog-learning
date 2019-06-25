@@ -1,6 +1,8 @@
 :- dynamic [
         alive/0,
-        last_heartbeat_acked/0
+        last_heartbeat_acked/0,
+        session_id/1,
+        d/1
     ].
 :- use_module(library(http/websocket)).
 :- use_module(library(http/json)).
@@ -23,14 +25,21 @@ gateway_url(URL) :-
              _{url:URL},
              [json_object(dict)]).
 
-connect :-
+run :-
+    connect(false).
+
+connect(Resume) :-
     gateway_url(GatewayURL),
     string_concat(GatewayURL, "/?v=6&encoding=json", WebsocketURL),
     http_open_websocket(WebsocketURL, WebSocket, []),
     ws_receive(WebSocket, Response, [format(json)]),
-    HeartbeatMs is Response.data.d.heartbeat_interval / 1_000,
-    heartbeat(WebSocket, HeartbeatMs),
-    identify(WebSocket),
+    HeartbeatSeconds is Response.data.d.heartbeat_interval / 1_000,
+    write('Heartbeating every '), write(HeartbeatSeconds), writeln('ms'),
+    heartbeat(WebSocket, HeartbeatSeconds),
+    (  Resume
+    -> resume(WebSocket)
+    ;  identify(WebSocket)
+    ),
     loop(WebSocket).
 
 loop(WebSocket) :-
@@ -40,13 +49,23 @@ loop(WebSocket) :-
     loop(WebSocket).
 
 handle_message(Response) :-
+    Response.opcode \= close,
     Op = Response.data.op,
     handle_event(Op, Response.data).
+handle_message(Response) :-
+    Response.opcode == close,
+    writeln('CLOSE CODE !!!').
 
 handle_event(0, Data) :-
     T = Data.t,
-    handle_op0_event(T, Data).
+    retractall(d(_)),
+    assert(d(Data.s)),
+    d(D),
+    write('D is '), writeln(D),
+    handle_op0_event(T, Data),
+    !.
 handle_event(11, Data) :-
+    writeln('heartbeat acked'),
     assert(last_heartbeat_acked).
 handle_event(Op, Data) :-
     writeln(Op),
@@ -54,10 +73,18 @@ handle_event(Op, Data) :-
 
 handle_op0_event("READY", Data) :-
     SessionId = Data.d.session_id,
-    write(SessionId).
+    writeln(SessionId),
+    session_id(SessionId).
 handle_op0_event("GUILD_CREATE", Data) :-
-    SessionId = Data.d.session_id,
-    write(SessionId).
+    Name = Data.d.name,
+    writeln(Name).
+handle_op0_event("MESSAGE_CREATE", Data) :-
+    Data = Data.d,
+    writeln(Data).
+handle_op0_event(What, Data) :-
+    Data = Data.d,
+    writeln(What),
+    writeln(Data).
 
 identify(WebSocket) :-
     EventData = _{
@@ -72,23 +99,38 @@ identify(WebSocket) :-
     payload(2, EventData, Payload),
     ws_send(WebSocket, Payload).
 
-heartbeat(WebSocket, HeartbeatMs) :-
-    assert(alive),
-    assert(last_heartbeat_acked),
-    thread_create(pulse(WebSocket, HeartbeatMs, null), _).
+resume(WebSocket) :-
+    session_id(SessionId),
+    d(D),
+    EventData = _{
+        token: "NTg5NTQzMjA3Mzc3ODI5OTAx.XQcHTg.kTmlco1Zg6VJbQX33nEhsrrhCJA",
+        session_id: SessionId,
+        seq: D
+    },
+    payload(6, EventData, Payload),
+    ws_send(WebSocket, Payload).
 
-pulse(WebSocket, HeartbeatMs, D) :-
+
+heartbeat(WebSocket, HeartbeatSeconds) :-
+    assert(alive),
+    assert(d(null)),
+    assert(last_heartbeat_acked),
+    thread_create(pulse(WebSocket, HeartbeatSeconds), _).
+
+pulse(WebSocket, HeartbeatSeconds) :-
     alive,
+    d(D),
     (   last_heartbeat_acked
-    ->  retractall(last_heartbeat_acked),
+    ->  writeln('heartbeat ack retracted'),
+        retractall(last_heartbeat_acked),
         writeln("making a heartbeat"),
         payload(1, D, Payload),
-        ws_send(WebSocket, Payload),
+        % ws_send(WebSocket, Payload),
         writeln("now sleep"),
-        sleep(HeartbeatMs),
+        sleep(HeartbeatSeconds),
         writeln("done sleep"),
-        NewD is D + 1,
-        pulse(WebSocket, HeartbeatMs, NewD)
+        !,
+        pulse(WebSocket, HeartbeatSeconds)
     ;   reconnect(WebSocket)
     ).
 
@@ -97,8 +139,9 @@ kill :-
 
 reconnect(WebSocket) :-
     ws_close(WebSocket, 9000, ack_missed),
-    writeln('would reconnect here').
-    % connect.
+    kill,
+    writeln('would reconnect here'),
+    connect(true).
 
 payload(Opcode, EventData, _{
     opcode: Opcode,
