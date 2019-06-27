@@ -2,7 +2,8 @@
         alive/0,
         last_heartbeat_acked/0,
         session_id/1,
-        d/1
+        d/1,
+        ws/1
     ].
 :- use_module(library(http/websocket)).
 :- use_module(library(http/json)).
@@ -25,33 +26,44 @@ gateway_url(URL) :-
              _{url:URL},
              [json_object(dict)]).
 
-run :-
-    connect(false).
+connect :-
+    prelude,
+    identify,
+    loop.
 
-connect(Resume) :-
+reconnect :-
+    writeln('closing websocket'),
+    ws(WebSocket),
+    ws_close(WebSocket, 9000, ack_missed),
+    writeln(killing),
+    kill,
+    writeln('reconnecting here'),
+    prelude,
+    resume.
+
+prelude :-
+    retractall(ws(_)),
     gateway_url(GatewayURL),
     string_concat(GatewayURL, "/?v=6&encoding=json", WebsocketURL),
     http_open_websocket(WebsocketURL, WebSocket, []),
+    assert(ws(WebSocket)),
     ws_receive(WebSocket, Response, [format(json)]),
     HeartbeatSeconds is Response.data.d.heartbeat_interval / 1_000,
     write('Heartbeating every '), write(HeartbeatSeconds), writeln('ms'),
-    heartbeat(WebSocket, HeartbeatSeconds),
-    (  Resume
-    -> resume(WebSocket)
-    ;  identify(WebSocket)
-    ),
-    loop(WebSocket).
+    heartbeat(HeartbeatSeconds).
 
-loop(WebSocket) :-
+loop :-
+    ws(WebSocket),
     ws_receive(WebSocket, Response, [format(json)]),
     handle_message(Response),
     !,
-    loop(WebSocket).
+    loop.
 
 handle_message(Response) :-
     Response.opcode \= close,
     Op = Response.data.op,
-    handle_event(Op, Response.data).
+    handle_event(Op, Response.data),
+    !.
 handle_message(Response) :-
     Response.opcode == close,
     writeln('CLOSE CODE !!!').
@@ -62,6 +74,7 @@ handle_event(0, Data) :-
     assert(d(Data.s)),
     d(D),
     write('D is '), writeln(D),
+    write('T is '), writeln(T),
     handle_op0_event(T, Data),
     !.
 handle_event(11, Data) :-
@@ -79,14 +92,16 @@ handle_op0_event("GUILD_CREATE", Data) :-
     Name = Data.d.name,
     writeln(Name).
 handle_op0_event("MESSAGE_CREATE", Data) :-
-    Data = Data.d,
-    writeln(Data).
+    Message = Data.d,
+    prolog_pretty_print:print_term(Message, []),
+    send_message("test").
 handle_op0_event(What, Data) :-
     Data = Data.d,
+    writeln('Unknown Op0 Event'),
     writeln(What),
     writeln(Data).
 
-identify(WebSocket) :-
+identify :-
     EventData = _{
         token: "NTg5NTQzMjA3Mzc3ODI5OTAx.XQcHTg.kTmlco1Zg6VJbQX33nEhsrrhCJA",
         compress: false,
@@ -97,9 +112,10 @@ identify(WebSocket) :-
         }
     },
     payload(2, EventData, Payload),
+    ws(WebSocket),
     ws_send(WebSocket, Payload).
 
-resume(WebSocket) :-
+resume :-
     session_id(SessionId),
     d(D),
     EventData = _{
@@ -108,40 +124,43 @@ resume(WebSocket) :-
         seq: D
     },
     payload(6, EventData, Payload),
+    ws(WebSocket),
     ws_send(WebSocket, Payload).
 
+send_message(M) :-
+    URL = "https://discordapp.com/api/channels/589553957270061063/messages",
+    Options = [headers([header("Authorization", "Bot NTg5NTQzMjA3Mzc3ODI5OTAx.XQcHTg.kTmlco1Zg6VJbQX33nEhsrrhCJA")])],
+    http_post(URL, form_data([content: M]), Reply, Options).
 
-heartbeat(WebSocket, HeartbeatSeconds) :-
+
+heartbeat(HeartbeatSeconds) :-
     assert(alive),
     assert(d(null)),
     assert(last_heartbeat_acked),
-    thread_create(pulse(WebSocket, HeartbeatSeconds), _).
+    pulse,
+    thread_create(trigger_pulse(HeartbeatSeconds), _).
 
-pulse(WebSocket, HeartbeatSeconds) :-
+trigger_pulse(HeartbeatSeconds) :-
     alive,
+    sleep(HeartbeatSeconds),
+    thread_signal(main, pulse),
+    trigger_pulse(HeartbeatSeconds).
+
+
+pulse :-
     d(D),
     (   last_heartbeat_acked
     ->  writeln('heartbeat ack retracted'),
         retractall(last_heartbeat_acked),
         writeln("making a heartbeat"),
         payload(1, D, Payload),
-        % ws_send(WebSocket, Payload),
-        writeln("now sleep"),
-        sleep(HeartbeatSeconds),
-        writeln("done sleep"),
-        !,
-        pulse(WebSocket, HeartbeatSeconds)
-    ;   reconnect(WebSocket)
+        ws(WebSocket),
+        ws_send(WebSocket, Payload)
+    ;   reconnect
     ).
 
 kill :-
     retractall(alive).
-
-reconnect(WebSocket) :-
-    ws_close(WebSocket, 9000, ack_missed),
-    kill,
-    writeln('would reconnect here'),
-    connect(true).
 
 payload(Opcode, EventData, _{
     opcode: Opcode,
@@ -151,3 +170,16 @@ payload(Opcode, EventData, _{
         d: EventData
     }
 }).
+
+message_payload(Opcode, S, T, EventData, _{
+    opcode: Opcode,
+    format: json,
+    data: _{
+        op: Opcode,
+        d: EventData,
+        s: S,
+        t: T
+    }
+}).
+
+:- connect.
