@@ -10,17 +10,7 @@
 :- use_module(library(http/http_client)).
 :- use_module(library(http/http_json)).
 
-% Flow:
-%   - Request gateway_url
-%   - open a websocket connection with that url (version and encoding)
-%   - receive op 10 Hello (heartbeat_interval)
-%     - op 1 heartbeat every heartbeat_interval ms
-%       - listen for op 11 heartbeat ack
-%       - if no ack, immediately:
-%         - terminate the connection w/ non-1000 close code
-%         - reconnect
-%         - attempt to resume.
-%     - also respond to server heartbeat requests
+
 gateway_url(URL) :-
     http_get('https://discordapp.com/api/gateway',
              _{url:URL},
