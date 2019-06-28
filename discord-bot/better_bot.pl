@@ -8,23 +8,25 @@
 *_.
 
 send_json(WebSocket, Payload) :-
-    json_write(current_output, Payload),
+    writeln('sending JSON:'),
+    json_write(current_output, Payload), nl,
     ws_send(WebSocket, Payload).
 
 receive_json(WebSocket, Response) :-
     ws_receive(WebSocket, Response, [format(json)]),
-    json_write(current_output, Response).
+    writeln('received JSON:'),
+    json_write(current_output, Response), nl.
 
 jump :-
     gateway_url(Url),
     http_open_websocket(Url, WebSocket, []),
     heartbeat_seconds(WebSocket, HeartbeatSeconds),
-    % thread_create(heartbeat(HeartbeatSeconds), _HeartbeatId),
+    thread_create(heartbeat(HeartbeatSeconds), _HeartbeatId),
     % thread_create(listener(WebSocket), _ListenerId),
-    identify(WebSocket),
+    identify(WebSocket, SessionId),
     main(WebSocket, null).
 
-identify(WebSocket) :-
+identify(WebSocket, SessionId) :-
     getenv(token, Token),
     EventData = _{
         token: Token,
@@ -40,7 +42,7 @@ identify(WebSocket) :-
     send_json(WebSocket, Payload),
     receive_json(WebSocket, Response),
     dispatch_payload(Op, D, S, T, Response),
-    format('Op: ~p, D: ~p, S: ~p, T: ~p~n', [Op, D, S, T]).
+    SessionId = D.session_id.
 
 main(WebSocket, S) :-
     thread_get_message(M),
@@ -50,13 +52,13 @@ main(WebSocket, S) :-
 handle_message(heartbeat, WebSocket, S, NewS) :-
     writeln('handling heartbeat message'),
     op(heartbeat, Op),
-    dispatch_payload(Op, S, _, _, Payload),
+    generic_payload(Op, S, Payload),
     send_json(WebSocket, Payload),
     NewS = S.
 
 generic_payload(Op, D, _{
     format: json,
-    % opcode: _,
+    opcode: Op,
     data: _{
         op: Op,
         d: D
