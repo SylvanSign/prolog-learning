@@ -18,15 +18,18 @@ receive_json(WebSocket, Response) :-
     json_write(current_output, Response), nl.
 
 jump :-
+    connect(WebSocket),
+    identify(WebSocket, SessionId, S),
+    main(WebSocket, SessionId, S, true).
+
+connect(WebSocket) :-
     gateway_url(Url),
     http_open_websocket(Url, WebSocket, []),
     heartbeat_seconds(WebSocket, HeartbeatSeconds),
-    thread_create(heartbeat(HeartbeatSeconds), _HeartbeatId),
-    % thread_create(listener(WebSocket), _ListenerId),
-    identify(WebSocket, SessionId),
-    main(WebSocket, null).
+    thread_create(heartbeat(HeartbeatSeconds), _, [alias(heartbeat)]),
+    * thread_create(listener(WebSocket), _, [alias(listener)]).
 
-identify(WebSocket, SessionId) :-
+identify(WebSocket, SessionId, S) :-
     getenv(token, Token),
     EventData = _{
         token: Token,
@@ -41,20 +44,43 @@ identify(WebSocket, SessionId) :-
     generic_payload(IdentifyOp, EventData, Payload),
     send_json(WebSocket, Payload),
     receive_json(WebSocket, Response),
-    dispatch_payload(Op, D, S, T, Response),
+    dispatch_payload(Op, D, S, "READY", Response),
     SessionId = D.session_id.
 
-main(WebSocket, S) :-
+main(WebSocket, SessionId, S, LastHeartbeatAcked) :-
     thread_get_message(M),
-    handle_message(M, WebSocket, S, NewS),
-    main(WebSocket, NewS).
+    handle_message(M, WebSocket, S, LastHeartbeatAcked, HeartbeatAcked, NewWebSocket, NewS),
+    main(NewWebSocket, SessionId, NewS, HeartbeatAcked).
 
-handle_message(heartbeat, WebSocket, S, NewS) :-
+handle_message(heartbeat, WebSocket, S, true, false, WebSocket, S) :-
     writeln('handling heartbeat message'),
     op(heartbeat, Op),
     generic_payload(Op, S, Payload),
     send_json(WebSocket, Payload),
     NewS = S.
+handle_message(heartbeat, WebSocket,  S, false, true, NewWebSocket, S) :-
+    writeln('last heartbeat went unacked. Resuming...'),
+    ws_close(WebSocket, 9000, ack_missed)
+    kill_threads,
+    connect(WebSocket),
+    resume(WebSocket, SessionId, S).
+
+resume(WebSocket, SessionId, S) :-
+    getenv(token, Token),
+    EventData = _{
+        token: Token,
+        session_id: SessionId,
+        seq: S
+    },
+    op(resume, ResumeOp),
+    generic_payload(ResumeOp, EventData, Payload),
+    send_json(WebSocket, Payload).
+
+kill_threads :-
+    thread_send_message(heartbeat, kill),
+    thread_send_message(listener, kill),
+    thread_join(heartbeat),
+    thread_join(listener).
 
 generic_payload(Op, D, _{
     format: json,
@@ -78,16 +104,20 @@ dispatch_payload(Op, D, S, T, _{
 
 op(heartbeat, 1).
 op(identify, 2).
+op(resume, 6).
 
 heartbeat(HeartbeatSeconds) :-
-    sleep(HeartbeatSeconds),
-    thread_send_message(main, heartbeat).
+    sleep(5), % TODO replace with HeartbeatSeconds
+    \+ thread_peek_message(kill),
+    thread_send_message(main, heartbeat),
+    heartbeat(HeartbeatSeconds).
 
 heartbeat_seconds(WebSocket, HeartbeatSeconds) :-
     receive_json(WebSocket, Response),
     HeartbeatSeconds is Response.data.d.heartbeat_interval / 1_000.
 
 % listener(WebSocket) :-
+%     \+ thread_peek_message(kill),
 %     Seconds = 10,
 %     thread_send_message(main, msg('tester')),
 %     sleep(Seconds),
