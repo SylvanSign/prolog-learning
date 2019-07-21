@@ -20,14 +20,14 @@ receive_json(WebSocket, Response) :-
 jump :-
     connect(WebSocket),
     identify(WebSocket, SessionId, S),
-    main(WebSocket, SessionId, S, true).
+    main(SessionId, WebSocket, S, true).
 
 connect(WebSocket) :-
     gateway_url(Url),
     http_open_websocket(Url, WebSocket, []),
     heartbeat_seconds(WebSocket, HeartbeatSeconds),
     thread_create(heartbeat(HeartbeatSeconds), _, [alias(heartbeat)]),
-    * thread_create(listener(WebSocket), _, [alias(listener)]).
+    thread_create(listener(WebSocket), _, [alias(listener)]).
 
 identify(WebSocket, SessionId, S) :-
     getenv(token, Token),
@@ -44,26 +44,25 @@ identify(WebSocket, SessionId, S) :-
     generic_payload(IdentifyOp, EventData, Payload),
     send_json(WebSocket, Payload),
     receive_json(WebSocket, Response),
-    dispatch_payload(Op, D, S, "READY", Response),
+    dispatch_payload(0, D, S, "READY", Response),
     SessionId = D.session_id.
 
-main(WebSocket, SessionId, S, LastHeartbeatAcked) :-
+main(SessionId, WebSocket, S, LastHeartbeatAcked) :-
     thread_get_message(M),
-    handle_message(M, WebSocket, S, LastHeartbeatAcked, HeartbeatAcked, NewWebSocket, NewS),
-    main(NewWebSocket, SessionId, NewS, HeartbeatAcked).
+    handle_message(M, SessionId, old(WebSocket, S, LastHeartbeatAcked), new(NewWebSocket, NewS, HeartbeatAcked)),
+    main(SessionId, NewWebSocket, NewS, HeartbeatAcked).
 
-handle_message(heartbeat, WebSocket, S, true, false, WebSocket, S) :-
+handle_message(heartbeat, _, old(WebSocket, S, true), new(WebSocket, S, false)) :-
     writeln('handling heartbeat message'),
     op(heartbeat, Op),
     generic_payload(Op, S, Payload),
-    send_json(WebSocket, Payload),
-    NewS = S.
-handle_message(heartbeat, WebSocket,  S, false, true, NewWebSocket, S) :-
+    send_json(WebSocket, Payload).
+handle_message(heartbeat, SessionId, old(WebSocket,  S, false), new(NewWebSocket, S, true)) :-
     writeln('last heartbeat went unacked. Resuming...'),
-    ws_close(WebSocket, 9000, ack_missed)
+    ws_close(WebSocket, 9000, ack_missed),
     kill_threads,
-    connect(WebSocket),
-    resume(WebSocket, SessionId, S).
+    connect(NewWebSocket),
+    resume(NewWebSocket, SessionId, S).
 
 resume(WebSocket, SessionId, S) :-
     getenv(token, Token),
