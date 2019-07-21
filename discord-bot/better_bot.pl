@@ -8,15 +8,25 @@
 :- op(920,fy, *).
 *_.
 
+% This is the heart of the bot. ie. where the NLP happens
+reply_to_message(Data, Reply) :-
+    Reply = Data.content.
+
+% This prevents bot from ruining other people's experience ;)
+should_skip_reply(Data) :-
+    Data.author.get(bot).
+should_skip_reply(Data) :-
+    Data.channel_id \== "588902110545051650".
+
 send_json(WebSocket, Payload) :-
     writeln('sending JSON:'),
-    * json_write(current_output, Payload), nl,
+    json_write(current_output, Payload), nl,
     ws_send(WebSocket, Payload).
 
 receive_json(WebSocket, Response) :-
     ws_receive(WebSocket, Response, [format(json)]),
     writeln('received JSON:'),
-    * json_write(current_output, Response), nl.
+    json_write(current_output, Response), nl.
 
 jump :-
     connect(WebSocket),
@@ -84,7 +94,7 @@ handle_op0_event("GUILD_CREATE", Data) :-
     writeln(Name).
 handle_op0_event("MESSAGE_CREATE", Data) :-
     prolog_pretty_print:print_term(Data, []),
-    (  Data.author.get(bot)
+    ( should_skip_reply(Data)
     -> writeln('skipping reply to bot')
     ;  reply(Data)
     ).
@@ -98,7 +108,8 @@ reply(Data) :-
     getenv(token, Token),
     format(string(AuthHeader), "Bot ~s", [Token]),
     Options = [request_header(authorization=AuthHeader)],
-    http_post(URL, json(_{content:Data.content}), Response, Options),
+    reply_to_message(Data, Reply),
+    http_post(URL, json(_{content:Reply}), Response, Options),
     writeln(Response).
 
 resume(WebSocket, SessionId, S) :-
