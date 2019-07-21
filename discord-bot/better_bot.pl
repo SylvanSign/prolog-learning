@@ -52,26 +52,31 @@ identify(WebSocket, SessionId, S) :-
 
 main(SessionId, WebSocket, S, LastHeartbeatAcked) :-
     thread_get_message(M),
-    format('Got message ~p~n', [M]),
-    handle_message(M, SessionId, old(WebSocket, S, LastHeartbeatAcked), new(NewWebSocket, NewS, HeartbeatAcked)),
+    handle_message(M, SessionId, state(WebSocket, S, LastHeartbeatAcked), state(NewWebSocket, NewS, HeartbeatAcked)),
     main(SessionId, NewWebSocket, NewS, HeartbeatAcked).
 
-handle_message(heartbeat, _, old(WebSocket, S, true), new(WebSocket, S, false)) :-
+handle_message(heartbeat, _, state(WebSocket, S, true), state(WebSocket, S, false)) :-
     writeln('handling heartbeat message'),
     op(heartbeat, Op),
     generic_payload(Op, S, Payload),
     send_json(WebSocket, Payload).
-handle_message(heartbeat, SessionId, old(WebSocket,  S, false), new(NewWebSocket, S, true)) :-
+handle_message(heartbeat, SessionId, state(WebSocket,  S, false), state(NewWebSocket, S, true)) :-
     writeln('last heartbeat went unacked. Resuming...'),
     ws_close(WebSocket, 9000, ack_missed),
     kill_threads,
     connect(NewWebSocket),
     create_listener(WebSocket),
     resume(NewWebSocket, SessionId, S).
-handle_message(discord(M), SId, old(W, S, A), new(W, S, A)) :-
-    writeln('got discord message').
-handle_message(M, SId, old(W, S, A), new(W, S, A)) :-
+handle_message(discord(M), SId, OldState, NewState) :-
+    dispatch_payload(Op, D, S, T, M),
+    format('got discord message with Opcode ~p~n', [Op]),
+    handle_discord_message(Op, D, S, T, OldState, NewState).
+handle_message(M, SId, State, State) :-
     writeln('handling unknown message').
+
+handle_discord_message(11, D, S, T, state(W,_,_), state(W,S,true)).
+handle_discord_message(0, D, S, T, State, State) :-
+    writeln('handling unknown discord message').
 
 resume(WebSocket, SessionId, S) :-
     getenv(token, Token),
@@ -115,7 +120,7 @@ op(identify, 2).
 op(resume, 6).
 
 heartbeat(HeartbeatSeconds) :-
-    sleep(5), % TODO replace with HeartbeatSeconds
+    sleep(HeartbeatSeconds),
     \+ thread_peek_message(kill),
     thread_send_message(main, heartbeat),
     heartbeat(HeartbeatSeconds).
@@ -126,9 +131,7 @@ heartbeat_seconds(WebSocket, HeartbeatSeconds) :-
 
 listener(WebSocket) :-
     \+ thread_peek_message(kill),
-    writeln('about to receive message'),
     receive_json(WebSocket, Response),
-    writeln('just received message'),
     thread_send_message(main, discord(Response)),
     listener(WebSocket).
 
