@@ -2,6 +2,7 @@
 :- use_module(library(http/json)).
 :- use_module(library(http/http_client)).
 :- use_module(library(http/http_json)).
+:- use_module(library(http/json_convert)).
 
 % TODO remove this; for debugging only
 :- op(920,fy, *).
@@ -82,11 +83,23 @@ handle_op0_event("GUILD_CREATE", Data) :-
     Name = Data.name,
     writeln(Name).
 handle_op0_event("MESSAGE_CREATE", Data) :-
-    prolog_pretty_print:print_term(Data, []).
+    prolog_pretty_print:print_term(Data, []),
+    (  Data.author.get(bot)
+    -> writeln('skipping reply to bot')
+    ;  reply(Data)
+    ).
 handle_op0_event(What, Data) :-
     writeln('Unknown Op0 Event'),
     writeln(What),
     writeln(Data).
+
+reply(Data) :-
+    format(string(URL), "https://discordapp.com/api/channels/~s/messages", [Data.channel_id]),
+    getenv(token, Token),
+    format(string(AuthHeader), "Bot ~s", [Token]),
+    Options = [request_header(authorization=AuthHeader)],
+    http_post(URL, json(_{content:Data.content}), Response, Options),
+    writeln(Response).
 
 resume(WebSocket, SessionId, S) :-
     getenv(token, Token),
@@ -153,6 +166,3 @@ gateway_url(Url) :-
              _{url:UrlPrefix},
              [json_object(dict)]),
     string_concat(UrlPrefix, "/?v=6&encoding=json", Url).
-
-
-ready(websocket{data:_13924{d:_13884{'_trace':["[\"gateway-prd-main-xjp2\",{\"micros\":23137,\"calls\":[\"discord-sessions-prd-1-21\",{\"micros\":20264,\"calls\":[\"start_session\",{\"micros\":18451,\"calls\":[\"api-prd-main-cv2r\",{\"micros\":15670,\"calls\":[\"get_user\",{\"micros\":1569},\"add_authorized_ip\",{\"micros\":5},\"get_guilds\",{\"micros\":1923},\"coros_wait\",{\"micros\":2}]}]},\"guilds_connect\",{\"micros\":2,\"calls\":[]},\"presence_connect\",{\"micros\":711,\"calls\":[]}]}]}]"],guilds:[_13802{id:"407066821460754433",unavailable:true},_13844{id:"418568366106869770",unavailable:true}],presences:[],private_channels:[],relationships:[],session_id:"a41e5869b307656e5d699a84d6b2b1e0",user:_13636{avatar:"5fbff694a7e54a13a8d7d4a05c93325f",bot:true,discriminator:"4507",email:null,id:"589543207377829901",mfa_enabled:false,username:"Adama",verified:true},user_settings:_13524{},v:6},op:0,s:1,t:"READY"},format:json,opcode:text}).
