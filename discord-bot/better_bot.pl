@@ -20,14 +20,17 @@ receive_json(WebSocket, Response) :-
 jump :-
     connect(WebSocket),
     identify(WebSocket, SessionId, S),
+    create_listener(WebSocket),
     main(SessionId, WebSocket, S, true).
+
+create_listener(WebSocket) :-
+    thread_create(listener(WebSocket), _, [alias(listener)]).
 
 connect(WebSocket) :-
     gateway_url(Url),
     http_open_websocket(Url, WebSocket, []),
     heartbeat_seconds(WebSocket, HeartbeatSeconds),
-    thread_create(heartbeat(HeartbeatSeconds), _, [alias(heartbeat)]),
-    thread_create(listener(WebSocket), _, [alias(listener)]).
+    thread_create(heartbeat(HeartbeatSeconds), _, [alias(heartbeat)]).
 
 identify(WebSocket, SessionId, S) :-
     getenv(token, Token),
@@ -49,6 +52,7 @@ identify(WebSocket, SessionId, S) :-
 
 main(SessionId, WebSocket, S, LastHeartbeatAcked) :-
     thread_get_message(M),
+    format('Got message ~p~n', [M]),
     handle_message(M, SessionId, old(WebSocket, S, LastHeartbeatAcked), new(NewWebSocket, NewS, HeartbeatAcked)),
     main(SessionId, NewWebSocket, NewS, HeartbeatAcked).
 
@@ -62,7 +66,12 @@ handle_message(heartbeat, SessionId, old(WebSocket,  S, false), new(NewWebSocket
     ws_close(WebSocket, 9000, ack_missed),
     kill_threads,
     connect(NewWebSocket),
+    create_listener(WebSocket),
     resume(NewWebSocket, SessionId, S).
+handle_message(discord(M), SId, old(W, S, A), new(W, S, A)) :-
+    writeln('got discord message').
+handle_message(M, SId, old(W, S, A), new(W, S, A)) :-
+    writeln('handling unknown message').
 
 resume(WebSocket, SessionId, S) :-
     getenv(token, Token),
@@ -115,12 +124,13 @@ heartbeat_seconds(WebSocket, HeartbeatSeconds) :-
     receive_json(WebSocket, Response),
     HeartbeatSeconds is Response.data.d.heartbeat_interval / 1_000.
 
-% listener(WebSocket) :-
-%     \+ thread_peek_message(kill),
-%     Seconds = 10,
-%     thread_send_message(main, msg('tester')),
-%     sleep(Seconds),
-%     listener.
+listener(WebSocket) :-
+    \+ thread_peek_message(kill),
+    writeln('about to receive message'),
+    receive_json(WebSocket, Response),
+    writeln('just received message'),
+    thread_send_message(main, discord(Response)),
+    listener(WebSocket).
 
 api_url('https://discordapp.com/api/gateway').
 
