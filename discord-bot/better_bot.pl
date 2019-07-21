@@ -9,13 +9,13 @@
 
 send_json(WebSocket, Payload) :-
     writeln('sending JSON:'),
-    json_write(current_output, Payload), nl,
+    * json_write(current_output, Payload), nl,
     ws_send(WebSocket, Payload).
 
 receive_json(WebSocket, Response) :-
     ws_receive(WebSocket, Response, [format(json)]),
     writeln('received JSON:'),
-    json_write(current_output, Response), nl.
+    * json_write(current_output, Response), nl.
 
 jump :-
     connect(WebSocket),
@@ -52,31 +52,41 @@ identify(WebSocket, SessionId, S) :-
 
 main(SessionId, WebSocket, S, LastHeartbeatAcked) :-
     thread_get_message(M),
-    handle_message(M, SessionId, state(WebSocket, S, LastHeartbeatAcked), state(NewWebSocket, NewS, HeartbeatAcked)),
+    handle_message(M, SessionId, s(WebSocket, S, LastHeartbeatAcked), s(NewWebSocket, NewS, HeartbeatAcked)),
     main(SessionId, NewWebSocket, NewS, HeartbeatAcked).
 
-handle_message(heartbeat, _, state(WebSocket, S, true), state(WebSocket, S, false)) :-
+handle_message(heartbeat, _, s(WebSocket, S, true), s(WebSocket, S, false)) :-
     writeln('handling heartbeat message'),
     op(heartbeat, Op),
     generic_payload(Op, S, Payload),
     send_json(WebSocket, Payload).
-handle_message(heartbeat, SessionId, state(WebSocket,  S, false), state(NewWebSocket, S, true)) :-
+handle_message(heartbeat, SessionId, s(WebSocket,  S, false), s(NewWebSocket, S, true)) :-
     writeln('last heartbeat went unacked. Resuming...'),
     ws_close(WebSocket, 9000, ack_missed),
     kill_threads,
     connect(NewWebSocket),
     create_listener(WebSocket),
     resume(NewWebSocket, SessionId, S).
-handle_message(discord(M), SId, OldState, NewState) :-
+handle_message(discord(M), _, s(W,_,LastAcked), s(W,S,Acked)) :-
     dispatch_payload(Op, D, S, T, M),
-    format('got discord message with Opcode ~p~n', [Op]),
-    handle_discord_message(Op, D, S, T, OldState, NewState).
-handle_message(M, SId, State, State) :-
+    format('got discord ~p Op ~p~n', [T, Op]),
+    handle_discord_message(Op, D, T, LastAcked, Acked).
+handle_message(_, _, Acked, Acked) :-
     writeln('handling unknown message').
 
-handle_discord_message(11, D, S, T, state(W,_,_), state(W,S,true)).
-handle_discord_message(0, D, S, T, State, State) :-
-    writeln('handling unknown discord message').
+handle_discord_message(11, _, _, _, true).
+handle_discord_message(0, D, T, Acked, Acked) :-
+    handle_op0_event(T, D).
+
+handle_op0_event("GUILD_CREATE", Data) :-
+    Name = Data.name,
+    writeln(Name).
+handle_op0_event("MESSAGE_CREATE", Data) :-
+    prolog_pretty_print:print_term(Data, []).
+handle_op0_event(What, Data) :-
+    writeln('Unknown Op0 Event'),
+    writeln(What),
+    writeln(Data).
 
 resume(WebSocket, SessionId, S) :-
     getenv(token, Token),
