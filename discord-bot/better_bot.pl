@@ -11,16 +11,10 @@
 *_.
 
 send_json(WebSocket, Payload) :-
-    * writeln('sending JSON:'),
-    * json_write(current_output, Payload),
-    * nl,
     ws_send(WebSocket, Payload).
 
 receive_json(WebSocket, Response) :-
-    ws_receive(WebSocket, Response, [format(json)]),
-    * writeln('received JSON:'),
-    * json_write(current_output, Response),
-    * nl.
+    ws_receive(WebSocket, Response, [format(json)]).
 
 jump(ReplyCallback) :-
     connect(WebSocket),
@@ -60,21 +54,21 @@ main(ReplyCallback, SessionId, WebSocket, S, LastHeartbeatAcked) :-
     handle_message(M, ReplyCallback, SessionId, s(WebSocket, S, LastHeartbeatAcked), s(NewWebSocket, NewS, HeartbeatAcked)),
     main(ReplyCallback, SessionId, NewWebSocket, NewS, HeartbeatAcked).
 
-handle_message(heartbeat, _, _, s(WebSocket, S, true), s(WebSocket, S, false)) :-
+handle_message(heartbeat, _, _, s(WebSocket, S, _), s(WebSocket, S, false)) :-
     * writeln('handling heartbeat message'),
     op(heartbeat, Op),
     generic_payload(Op, S, Payload),
     send_json(WebSocket, Payload).
-handle_message(heartbeat, _, SessionId, s(WebSocket,  S, false), s(NewWebSocket, S, true)) :-
-    writeln('last heartbeat went unacked. Resuming...'),
-    ws_close(WebSocket, 9000, ack_missed),
-    kill_threads,
-    connect(NewWebSocket),
-    create_listener(WebSocket),
-    resume(NewWebSocket, SessionId, S).
+% handle_message(heartbeat, _, SessionId, s(WebSocket,  S, false), s(NewWebSocket, S, true)) :-
+%     writeln('last heartbeat went unacked. Resuming...'),
+%     ws_close(WebSocket, 9000, ack_missed),
+%     kill_threads,
+%     connect(NewWebSocket),
+%     create_listener(WebSocket),
+%     resume(NewWebSocket, SessionId, S).
 handle_message(discord(M), ReplyCallback, _, s(W,_,LastAcked), s(W,S,Acked)) :-
     dispatch_payload(Op, D, S, T, M),
-    format('got discord ~p Op ~p~n', [T, Op]),
+    * format('got discord ~p Op ~p~n', [T, Op]),
     handle_discord_message(Op, ReplyCallback, D, T, LastAcked, Acked).
 handle_message(_, _, _, Acked, Acked) :-
     * writeln('handling unknown message').
@@ -95,13 +89,12 @@ handle_op0_event(What, _, Data) :-
     * writeln(Data).
 
 reply(ReplyCallback, Data) :-
-    format(string(URL), "https://discordapp.com/api/channels/~s/messages", [Data.channel_id]),
+    format(string(URL), 'https://discordapp.com/api/channels/~a/messages', [Data.channel_id]),
     getenv(token, Token),
-    format(string(AuthHeader), "Bot ~s", [Token]),
+    format(atom(AuthHeader), 'Bot ~a', [Token]),
     Options = [request_header(authorization=AuthHeader)],
     (  call(ReplyCallback, Data, Reply)
     -> http_post(URL, json(_{content:Reply}), _Response, Options)
-    ; writeln('skipping reply...')
     ).
 
 resume(WebSocket, SessionId, S) :-
@@ -159,6 +152,7 @@ listener(WebSocket) :-
     \+ thread_peek_message(kill),
     receive_json(WebSocket, Response),
     thread_send_message(main, discord(Response)),
+    !,
     listener(WebSocket).
 
 api_url('https://discordapp.com/api/gateway').
@@ -168,4 +162,4 @@ gateway_url(Url) :-
     http_get(Api,
              _{url:UrlPrefix},
              [json_object(dict)]),
-    string_concat(UrlPrefix, "/?v=6&encoding=json", Url).
+    string_concat(UrlPrefix, '/?v=6&encoding=json', Url).
