@@ -54,18 +54,18 @@ main(ReplyCallback, SessionId, WebSocket, S, LastHeartbeatAcked) :-
     handle_message(M, ReplyCallback, SessionId, s(WebSocket, S, LastHeartbeatAcked), s(NewWebSocket, NewS, HeartbeatAcked)),
     main(ReplyCallback, SessionId, NewWebSocket, NewS, HeartbeatAcked).
 
-handle_message(heartbeat, _, _, s(WebSocket, S, _), s(WebSocket, S, false)) :-
+handle_message(heartbeat, _, _, s(WebSocket, S, true), s(WebSocket, S, false)) :-
     * writeln('handling heartbeat message'),
     op(heartbeat, Op),
     generic_payload(Op, S, Payload),
     send_json(WebSocket, Payload).
-% handle_message(heartbeat, _, SessionId, s(WebSocket,  S, false), s(NewWebSocket, S, true)) :-
-%     writeln('last heartbeat went unacked. Resuming...'),
-%     ws_close(WebSocket, 9000, ack_missed),
-%     kill_threads,
-%     connect(NewWebSocket),
-%     create_listener(WebSocket),
-%     resume(NewWebSocket, SessionId, S).
+handle_message(heartbeat, _, SessionId, s(WebSocket,  S, false), s(NewWebSocket, S, true)) :-
+    writeln('last heartbeat went unacked. Resuming...'),
+    ws_close(WebSocket, 9000, ack_missed),
+    kill_threads,
+    connect(NewWebSocket),
+    create_listener(WebSocket),
+    resume(NewWebSocket, SessionId, S).
 handle_message(discord(M), ReplyCallback, _, s(W,_,LastAcked), s(W,S,Acked)) :-
     dispatch_payload(Op, D, S, T, M),
     * format('got discord ~p Op ~p~n', [T, Op]),
@@ -89,9 +89,9 @@ handle_op0_event(What, _, Data) :-
     * writeln(Data).
 
 reply(ReplyCallback, Data) :-
-    format(string(URL), 'https://discordapp.com/api/channels/~a/messages', [Data.channel_id]),
+    format(string(URL), "https://discordapp.com/api/channels/~s/messages", [Data.channel_id]),
     getenv(token, Token),
-    format(atom(AuthHeader), 'Bot ~a', [Token]),
+    format(string(AuthHeader), "Bot ~s", [Token]),
     Options = [request_header(authorization=AuthHeader)],
     (  call(ReplyCallback, Data, Reply)
     -> http_post(URL, json(_{content:Reply}), _Response, Options)
@@ -162,4 +162,4 @@ gateway_url(Url) :-
     http_get(Api,
              _{url:UrlPrefix},
              [json_object(dict)]),
-    string_concat(UrlPrefix, '/?v=6&encoding=json', Url).
+    string_concat(UrlPrefix, "/?v=6&encoding=json", Url).

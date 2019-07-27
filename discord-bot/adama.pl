@@ -4,6 +4,7 @@
 :- use_module(eliza, [eliza/2]).
 
 :- dynamic apparently_is/2.
+:- dynamic eliza_on/0.
 
 % TODO remove this; for debugging only
 :- op(920,fy, *).
@@ -82,8 +83,15 @@ reply_to_message(Data, Reply) :-
     writeln(DowncaseWords),
     reply(Data, DowncaseWords, Reply).
 
+reply(_Data, [!,eliza,on], 'ELIZA mode ON') :-
+    retractall(eliza_on),
+    assert(eliza_on).
+reply(_Data, [!,eliza,off], 'ELIZA mode OFF') :-
+    retractall(eliza_on).
 reply(_Data, DowncaseWords, Reply) :-
-    eliza(DowncaseWords, Reply).
+    eliza_on,
+    eliza(DowncaseWords, ReplyWords),
+    atomic_list_concat(ReplyWords, ' ', Reply).
 reply(_Data, DowncaseWords, Reply) :-
     phrase(so_say_we_all, DowncaseWords),
     Reply = 'SO SAY WE ALL!'.
@@ -109,7 +117,6 @@ reply(_Data, DowncaseWords, Reply) :-
         atomic_list_concat(ReplyWords, ' ', Reply)
     ;   Reply = 'I wish I knew...'
     ).
-
 reply(_Data, DowncaseWords, Reply) :-
     phrase(learn_apparently_is, DowncaseWords),
     Reply = 'Thank you. I now understand the lore better.'.
