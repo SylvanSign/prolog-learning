@@ -10,7 +10,7 @@
 :- op(920,fy, *).
 *_.
 
-% :- debug(websocket).
+:- debug(websocket).
 
 start :-
     jump(reply_to_message).
