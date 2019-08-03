@@ -52,6 +52,7 @@ identify(WebSocket, SessionId, S) :-
 main(ReplyCallback, SessionId, WebSocket, S, LastHeartbeatAcked) :-
     thread_get_message(M),
     handle_message(M, ReplyCallback, SessionId, s(WebSocket, S, LastHeartbeatAcked), s(NewWebSocket, NewS, HeartbeatAcked)),
+    !,
     main(ReplyCallback, SessionId, NewWebSocket, NewS, HeartbeatAcked).
 
 handle_message(heartbeat, _, _, s(WebSocket, S, true), s(WebSocket, S, false)) :-
@@ -64,7 +65,13 @@ handle_message(heartbeat, _, SessionId, s(WebSocket,  S, false), s(NewWebSocket,
     ws_close(WebSocket, 9000, ack_missed),
     kill_threads,
     connect(NewWebSocket),
-    create_listener(WebSocket),
+    create_listener(NewWebSocket),
+    resume(NewWebSocket, SessionId, S).
+handle_message(discord(M), _, SessionId, s(_, S, _), s(NewWebSocket, S, false)) :-
+    M.opcode == close,
+    kill_threads,
+    connect(NewWebSocket),
+    create_listener(NewWebSocket),
     resume(NewWebSocket, SessionId, S).
 handle_message(discord(M), ReplyCallback, _, s(W,_,LastAcked), s(W,S,Acked)) :-
     dispatch_payload(Op, D, S, T, M),

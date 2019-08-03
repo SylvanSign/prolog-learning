@@ -22,16 +22,16 @@ so_say_we_all --> [so,say,we,all], tail_punctuation.
 starbuck_exchange --> whatya, [hear], target, tail_punctuation.
 whatya --> [whatya].
 whatya --> [whatdya].
-whatya --> [what,do], ([ya] ; [you]).
-target --> [] ; [starbuck] ; [adama] ; [commander] ; [admiral].
+whatya --> [what,do], ([ya] | [you]).
+target --> [] | [starbuck] | [adama] | [commander] | [admiral].
 
 uncertainty --> [idk].
-uncertainty --> [i], ([don,'\'',t] ; [dunno]).
+uncertainty --> [i], ([don,'\'',t] | [dunno]).
 
-tail_punctuation --> [] ; [!] ; [?].
+tail_punctuation --> [] | [!] | [?].
 
 learn_apparently_is -->
-    starter, ([] ; [,]), [X,is,Y], finisher, [.],
+    starter, ([] | [,]), [X,is,Y], finisher, [.],
     { remember(apparently_is(X, Y)) }.
 
 starter --> [].
