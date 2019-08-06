@@ -1,12 +1,12 @@
 % :- set_prolog_flag(double_quotes, chars).
-
 :- use_module(better_bot, [jump/1]).
 :- use_module(eliza, [eliza/2]).
 
 :- dynamic apparently_is/2.
 :- dynamic eliza_on/0.
 
-% TODO remove this; for debugging only
+% TODO remove these; for debugging only
+:- use_module(library(prolog_stack)).
 :- op(920,fy, *).
 *_.
 

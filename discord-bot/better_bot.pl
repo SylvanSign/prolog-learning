@@ -117,9 +117,9 @@ resume(WebSocket, SessionId, S) :-
 
 kill_threads :-
     thread_send_message(heartbeat, kill),
-    thread_send_message(listener, kill),
+    * thread_send_message(listener, kill),
     thread_join(heartbeat),
-    thread_join(listener).
+    * thread_join(listener).
 
 generic_payload(Op, D, _{
     format: json,
