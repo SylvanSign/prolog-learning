@@ -76,7 +76,7 @@ handle_message(discord(M), ReplyCallback, SessionId, s(W,_,LastAcked), s(W,S,Ack
     dispatch_payload(Op, D, S, T, M),
     * format('got discord ~p Op ~p~n', [T, Op]),
     handle_discord_message(Op, ReplyCallback, D, T, LastAcked, Acked).
-handle_message(_, _, _, State, State) :-
+handle_message(_, _, _, State, ^ ) :-
     * writeln('handling unknown message').
 
 handle_discord_message(11, _, _, _, _, true).
@@ -160,7 +160,7 @@ op(resume, 6).
 heartbeat(HeartbeatSeconds) :-
     sleep(HeartbeatSeconds),
     \+ thread_peek_message(kill),
-    % thread_send_message(main, heartbeat),
+    thread_send_message(main, heartbeat),
     heartbeat(HeartbeatSeconds).
 
 heartbeat_seconds(WebSocket, HeartbeatSeconds) :-
