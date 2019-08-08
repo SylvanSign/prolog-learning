@@ -51,33 +51,32 @@ identify(WebSocket, SessionId, S) :-
 
 main(ReplyCallback, SessionId, WebSocket, S, LastHeartbeatAcked) :-
     thread_get_message(M),
-    handle_message(M, ReplyCallback, SessionId, s(WebSocket, S, LastHeartbeatAcked), s(NewWebSocket, NewS, HeartbeatAcked)),
+    handle_message(M, ReplyCallback, SessionId, s(WebSocket, S, LastHeartbeatAcked), s(NewWebSocket, NewS, HeartbeatAcked, NewSessionId)),
     !,
-    main(ReplyCallback, SessionId, NewWebSocket, NewS, HeartbeatAcked).
+    main(ReplyCallback, NewSessionId, NewWebSocket, NewS, HeartbeatAcked).
 
-handle_message(heartbeat, _, _, s(WebSocket, S, true), s(WebSocket, S, false)) :-
+handle_message(heartbeat, _, SessionId, s(WebSocket, S, true), s(WebSocket, S, false, SessionId)) :-
     * writeln('handling heartbeat message'),
     op(heartbeat, Op),
     generic_payload(Op, S, Payload),
     send_json(WebSocket, Payload).
-handle_message(heartbeat, _, SessionId, s(WebSocket,  S, false), s(NewWebSocket, S, true)) :-
+handle_message(heartbeat, _, SessionId, s(WebSocket,  S, false), s(NewWebSocket, S, true, SessionId)) :-
     writeln('last heartbeat went unacked. Resuming...'),
     ws_close(WebSocket, 9000, ack_missed),
     kill_threads,
     connect(NewWebSocket),
     create_listener(NewWebSocket),
     resume(NewWebSocket, SessionId, S).
-handle_message(discord(M), _, SessionId, s(_, S, _), s(NewWebSocket, S, false)) :-
-    M.opcode == close,
+handle_message(close, _, _, _, s(NewWebSocket, S, false, NewSessionId)) :-
     kill_threads,
     connect(NewWebSocket),
-    create_listener(NewWebSocket),
-    resume(NewWebSocket, SessionId, S).
-handle_message(discord(M), ReplyCallback, _, s(W,_,LastAcked), s(W,S,Acked)) :-
+    identify(NewWebSocket, NewSessionId, S),
+    resume(NewWebSocket, NewSessionId, S).
+handle_message(discord(M), ReplyCallback, SessionId, s(W,_,LastAcked), s(W,S,Acked, SessionId)) :-
     dispatch_payload(Op, D, S, T, M),
     * format('got discord ~p Op ~p~n', [T, Op]),
     handle_discord_message(Op, ReplyCallback, D, T, LastAcked, Acked).
-handle_message(_, _, _, Acked, Acked) :-
+handle_message(_, _, _, State, State) :-
     * writeln('handling unknown message').
 
 handle_discord_message(11, _, _, _, _, true).
@@ -115,12 +114,24 @@ resume(WebSocket, SessionId, S) :-
     generic_payload(ResumeOp, EventData, Payload),
     send_json(WebSocket, Payload).
 
+catch_report_continue(Goal) :-
+    catch(Goal, E, writeln(E)).
+
 kill_threads :-
+    writeln('BEGIN kill_threads'),
+    kill_listener,
+    kill_heartbeat,
+    writeln('END kill_threads').
+
+kill_heartbeat :-
     thread_send_message(heartbeat, kill),
-    * thread_send_message(listener, kill),
-    thread_join(heartbeat, Status),
-    format('heartbeat thread joined with ~s~n', [Status]),
-    * thread_join(listener).
+    thread_join(heartbeat, HeartbeatStatus),
+    write('heartbeat thread joined with '), write(HeartbeatStatus), nl.
+
+kill_listener :-
+    catch_report_continue(thread_send_message(listener, kill)),
+    catch_report_continue(thread_join(listener, ListenerStatus)),
+    write('listener thread joined with '), write(ListenerStatus), nl.
 
 generic_payload(Op, D, _{
     format: json,
@@ -149,7 +160,7 @@ op(resume, 6).
 heartbeat(HeartbeatSeconds) :-
     sleep(HeartbeatSeconds),
     \+ thread_peek_message(kill),
-    thread_send_message(main, heartbeat),
+    % thread_send_message(main, heartbeat),
     heartbeat(HeartbeatSeconds).
 
 heartbeat_seconds(WebSocket, HeartbeatSeconds) :-
@@ -158,10 +169,15 @@ heartbeat_seconds(WebSocket, HeartbeatSeconds) :-
 
 listener(WebSocket) :-
     \+ thread_peek_message(kill),
+    writeln('BEGIN receive_json'),
     receive_json(WebSocket, Response),
-    thread_send_message(main, discord(Response)),
-    !,
-    listener(WebSocket).
+    writeln('END receive_json'),
+    (  Response.opcode == close
+    -> thread_send_message(main, close)
+    ;  thread_send_message(main, discord(Response)),
+       !,
+       listener(WebSocket)
+    ).
 
 api_url('https://discordapp.com/api/gateway').
 

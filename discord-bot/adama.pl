@@ -6,6 +6,7 @@
 :- dynamic eliza_on/0.
 
 % TODO remove these; for debugging only
+:- debug.
 :- use_module(library(prolog_stack)).
 :- op(920,fy, *).
 *_.
