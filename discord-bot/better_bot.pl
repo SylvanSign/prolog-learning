@@ -67,7 +67,7 @@ handle_message(heartbeat, _, SessionId, s(WebSocket,  S, false), s(NewWebSocket,
     connect(NewWebSocket),
     create_listener(NewWebSocket),
     resume(NewWebSocket, SessionId, S).
-handle_message(close, _, _, _, s(NewWebSocket, S, false, NewSessionId)) :-
+handle_message(close, _, _, _, s(NewWebSocket, S, true, NewSessionId)) :-
     kill_threads,
     connect(NewWebSocket),
     identify(NewWebSocket, NewSessionId, S),
