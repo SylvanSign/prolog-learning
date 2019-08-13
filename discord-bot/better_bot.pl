@@ -5,6 +5,8 @@
 :- use_module(library(http/http_client)).
 :- use_module(library(http/http_json)).
 :- use_module(library(http/json_convert)).
+:- use_module(library(prolog_stack)).
+
 
 % TODO remove this; for debugging only
 :- op(920,fy, *).
@@ -20,7 +22,13 @@ jump(ReplyCallback) :-
     connect(WebSocket),
     identify(WebSocket, SessionId, S),
     create_listener(WebSocket),
-    main(ReplyCallback, SessionId, WebSocket, S, true).
+    catch_with_backtrace(
+        main(ReplyCallback, SessionId, WebSocket, S, true),
+        Error,
+        print_message(error, Error)
+    ),
+    !,
+    jump(ReplyCallback).
 
 create_listener(WebSocket) :-
     thread_create(listener(WebSocket), _, [alias(listener)]).
@@ -76,7 +84,7 @@ handle_message(discord(M), ReplyCallback, SessionId, s(W,_,LastAcked), s(W,S,Ack
     dispatch_payload(Op, D, S, T, M),
     * format('got discord ~p Op ~p~n', [T, Op]),
     handle_discord_message(Op, ReplyCallback, D, T, LastAcked, Acked).
-handle_message(_, _, _, State, ^ ) :-
+handle_message(_, _, _, _, _) :-
     * writeln('handling unknown message').
 
 handle_discord_message(11, _, _, _, _, true).
