@@ -1,4 +1,6 @@
 % :- set_prolog_flag(double_quotes, chars).
+:- use_module(library(http/http_client)).
+
 :- use_module(better_bot, [jump/1]).
 :- use_module(eliza, [eliza/2]).
 
@@ -30,6 +32,9 @@ uncertainty --> [i], ([don,'\'',t] | [dunno]).
 
 tail_punctuation --> [] | [!] | [?].
 
+whatever --> [].
+whatever --> [_], whatever.
+
 learn_apparently_is -->
     starter, ([] | [,]), [X,is,Y], finisher, [.],
     { remember(apparently_is(X, Y)) }.
@@ -51,6 +56,11 @@ teach_apparently_is(X, AllThings) -->
         list_things(AllThings, ThingsList)
     },
     [X,is|ThingsList].
+
+adama_gif -->
+    whatever,
+    [gif],
+    whatever.
 
 list_things_first_pass([Only], [OnlyWithPeriod]) :-
     atomic_concat(Only, '.', OnlyWithPeriod).
@@ -88,6 +98,9 @@ reply(_Data, [!,eliza,on], 'ELIZA mode ON') :-
     assert(eliza_on).
 reply(_Data, [!,eliza,off], 'ELIZA mode OFF') :-
     retractall(eliza_on).
+reply(_Data, DowncaseWords, Gif) :-
+    phrase(adama_gif, DowncaseWords),
+    random_gif(Gif).
 reply(_Data, DowncaseWords, Reply) :-
     eliza_on,
     eliza(DowncaseWords, ReplyWords),
@@ -145,3 +158,15 @@ my_downcase(Token, Token) :-
     !.
 my_downcase(Token, Word) :-
     downcase_atom(Token, Word).
+
+
+giphy_url('https://api.giphy.com/v1/gifs/random?tag=bsg+battlestar+galactica&rating=R&api_key=').
+random_gif(Gif) :-
+    getenv(giphy, Key),
+    giphy_url(UrlPrefix),
+    atomic_concat(UrlPrefix, Key, URL),
+    writeln('fetching...'),
+    http_get(URL,
+             Data,
+             [json_object(dict)]),
+    Gif = Data.data.url.
