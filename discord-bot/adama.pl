@@ -1,5 +1,6 @@
 % :- set_prolog_flag(double_quotes, chars).
 :- use_module(library(http/http_client)).
+:- use_module(library(uri)).
 
 :- use_module(better_bot, [jump/1]).
 :- use_module(eliza, [eliza/2]).
@@ -9,10 +10,9 @@
 
 % TODO remove these; for debugging only
 :- debug.
+:- debug(websocket).
 :- op(920,fy, *).
 *_.
-
-:- debug(websocket).
 
 start :-
     jump(reply_to_message).
@@ -34,6 +34,9 @@ tail_punctuation --> [] | [!] | [?].
 
 whatever --> [].
 whatever --> [_], whatever.
+
+something([X]) --> [X].
+something([X|Rest]) --> [X], something(Rest).
 
 learn_apparently_is -->
     starter, ([] | [,]), [X,is,Y], finisher, [.],
@@ -60,6 +63,10 @@ teach_apparently_is(X, AllThings) -->
 adama_gif -->
     whatever,
     [gif],
+    whatever.
+
+translate_to_gif -->
+    [gif,:],
     whatever.
 
 list_things_first_pass([Only], [OnlyWithPeriod]) :-
@@ -96,8 +103,12 @@ reply_to_message(Data, Reply) :-
 reply(_Data, [!,eliza,on], 'ELIZA mode ON') :-
     retractall(eliza_on),
     assert(eliza_on).
-reply(_Data, [!,eliza,off], 'ELIZA mode OFF') :-
+reply(_, [!,eliza,off], 'ELIZA mode OFF') :-
     retractall(eliza_on).
+reply(Data, DowncaseWords, Gif) :-
+    phrase(translate_to_gif, DowncaseWords),
+    string_concat("gif: ", Phrase, Data.content),
+    giphy_translate(Phrase, Gif).
 reply(_Data, DowncaseWords, Gif) :-
     phrase(adama_gif, DowncaseWords),
     random_gif(Gif).
@@ -160,13 +171,31 @@ my_downcase(Token, Word) :-
     downcase_atom(Token, Word).
 
 
-giphy_url('https://api.giphy.com/v1/gifs/random?tag=bsg+battlestar+galactica&rating=R&api_key=').
+giphy_random('https://api.giphy.com/v1/gifs/random').
 random_gif(Gif) :-
     getenv(giphy, Key),
-    giphy_url(UrlPrefix),
-    atomic_concat(UrlPrefix, Key, URL),
-    writeln('fetching...'),
-    http_get(URL,
+    giphy_random(UrlPrefix),
+    uri_query_components(QueryString, [
+        api_key=Key,
+        tag='bsg+battlestar+galactica',
+        rating='R'
+    ]),
+    atomic_list_concat([UrlPrefix, ?, QueryString], Url),
+    http_get(Url,
+             Data,
+             [json_object(dict)]),
+    Gif = Data.data.url.
+
+giphy_translate('https://api.giphy.com/v1/gifs/translate').
+giphy_translate(Words, Gif) :-
+    getenv(giphy, Key),
+    giphy_translate(UrlPrefix),
+    uri_query_components(QueryString, [
+        api_key=Key,
+        s=Words
+    ]),
+    atomic_list_concat([UrlPrefix, ?, QueryString], Url),
+    http_get(Url,
              Data,
              [json_object(dict)]),
     Gif = Data.data.url.
