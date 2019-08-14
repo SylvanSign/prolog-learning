@@ -1,4 +1,4 @@
-% :- set_prolog_flag(double_quotes, chars).
+:- set_prolog_flag(double_quotes, chars).
 :- use_module(library(http/http_client)).
 :- use_module(library(uri)).
 
@@ -65,9 +65,11 @@ adama_gif -->
     [gif],
     whatever.
 
-translate_to_gif -->
-    [gif,:],
-    whatever.
+translate_to_gif(Phrase) -->
+    """", something(Phrase), """".
+
+wc3_lookup(Unit) -->
+    "[", something(Unit), "]".
 
 list_things_first_pass([Only], [OnlyWithPeriod]) :-
     atomic_concat(Only, '.', OnlyWithPeriod).
@@ -105,10 +107,14 @@ reply(_Data, [!,eliza,on], 'ELIZA mode ON') :-
     assert(eliza_on).
 reply(_, [!,eliza,off], 'ELIZA mode OFF') :-
     retractall(eliza_on).
-reply(Data, DowncaseWords, Gif) :-
-    phrase(translate_to_gif, DowncaseWords),
-    string_concat("gif: ", Phrase, Data.content),
-    giphy_translate(Phrase, Gif).
+reply(Data, _DowncaseWords, Gif) :-
+    string_chars(Data.content, ContentChars),
+    phrase(translate_to_gif(Phrase), ContentChars),
+    atomic_list_concat(Phrase, PhraseAtom),
+    giphy_translate(PhraseAtom, Gif).
+reply(_Data, DowncaseWords, Url) :-
+    phrase(wc3_lookup(UnitWords), DowncaseWords),
+    wc3_wiki(UnitWords, Url).
 reply(_Data, DowncaseWords, Gif) :-
     phrase(adama_gif, DowncaseWords),
     random_gif(Gif).
@@ -188,6 +194,7 @@ random_gif(Gif) :-
 
 giphy_translate('https://api.giphy.com/v1/gifs/translate').
 giphy_translate(Words, Gif) :-
+    writeln("here"),
     getenv(giphy, Key),
     giphy_translate(UrlPrefix),
     uri_query_components(QueryString, [
@@ -199,3 +206,31 @@ giphy_translate(Words, Gif) :-
              Data,
              [json_object(dict)]),
     Gif = Data.data.url.
+
+wc3_wiki(UnitWords, Url) :-
+    format_unit(UnitWords, Unit),
+    format(atom(WikiUrl), 'https://wow.gamepedia.com/~a_(Warcraft_III)', [Unit]),
+    http_head(WikiUrl, Status),
+    Status = 200,
+    Url = WikiUrl.
+
+format_unit(Words, Unit) :-
+    maplist(capitalize_atom, Words, CapitalizedWords),
+    atomic_list_concat(CapitalizedWords, '_', Unit).
+
+capitalize_atom(a, a).
+capitalize_atom(and, and).
+capitalize_atom(of, of).
+capitalize_atom(the, the).
+capitalize_atom(in, in).
+capitalize_atom(Atom, CapitalizedAtom) :-
+    atom_codes(Atom, Codes),
+    capitalize(Codes, CapitalCodes),
+    atom_codes(CapitalizedAtom, CapitalCodes).
+
+capitalize([], []).
+capitalize([H1|T], [H2|T]):-
+  code_type(H2, to_upper(H1)).
+
+http_head(URL, Status) :-
+    http_get(URL, _, [method(head), status_code(Status)]).
