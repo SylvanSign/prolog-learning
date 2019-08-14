@@ -27,6 +27,7 @@ jump(ReplyCallback) :-
         Error,
         print_message(error, Error)
     ),
+    kill_threads,
     !,
     jump(ReplyCallback).
 
@@ -132,8 +133,8 @@ kill_threads :-
     writeln('END kill_threads').
 
 kill_heartbeat :-
-    thread_send_message(heartbeat, kill),
-    thread_join(heartbeat, HeartbeatStatus),
+    catch_report_continue(thread_send_message(heartbeat, kill)),
+    catch_report_continue(thread_join(heartbeat, HeartbeatStatus)),
     write('heartbeat thread joined with '), write(HeartbeatStatus), nl.
 
 kill_listener :-
