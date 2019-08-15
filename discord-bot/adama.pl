@@ -67,6 +67,8 @@ adama_gif -->
 
 translate_to_gif(Phrase) -->
     """", something(Phrase), """".
+translate_to_gif(Phrase) -->
+    "\u201c", something(Phrase), "\u201d".
 
 wc3_lookup(Unit) -->
     "[", something(Unit), "]".
@@ -189,12 +191,12 @@ random_gif(Gif) :-
     atomic_list_concat([UrlPrefix, ?, QueryString], Url),
     http_get(Url,
              Data,
-             [json_object(dict)]),
+             [status_code(Status), json_object(dict)]),
+    Status = 200,
     Gif = Data.data.url.
 
 giphy_translate('https://api.giphy.com/v1/gifs/translate').
 giphy_translate(Words, Gif) :-
-    writeln("here"),
     getenv(giphy, Key),
     giphy_translate(UrlPrefix),
     uri_query_components(QueryString, [
@@ -204,8 +206,11 @@ giphy_translate(Words, Gif) :-
     atomic_list_concat([UrlPrefix, ?, QueryString], Url),
     http_get(Url,
              Data,
-             [json_object(dict)]),
-    Gif = Data.data.url.
+             [status_code(Status), json_object(dict)]),
+    (  Status = 200
+    -> Gif = Data.data.url
+    ;  Gif = 'I''m sorry, Dave. I''m afraid I can''t do that.'
+    ).
 
 wc3_wiki(UnitWords, Url) :-
     format_unit(UnitWords, Unit),
