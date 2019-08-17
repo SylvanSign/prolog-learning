@@ -97,7 +97,7 @@ handle_op0_event("GUILD_CREATE", _, Data) :-
     * writeln(Name).
 handle_op0_event("MESSAGE_CREATE", ReplyCallback, Data) :-
     * prolog_pretty_print:print_term(Data, []),
-    reply(ReplyCallback, Data).
+    catch_report_continue(reply(ReplyCallback, Data)).
 handle_op0_event(What, _, Data) :-
     * writeln('Unknown Op0 Event'),
     * writeln(What),
