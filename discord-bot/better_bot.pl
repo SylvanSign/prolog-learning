@@ -1,4 +1,4 @@
-:- module(better_bot, [jump/1]).
+:- module(better_bot, [jump/1, catch_report_continue/1]).
 
 :- use_module(library(http/websocket)).
 :- use_module(library(http/json)).

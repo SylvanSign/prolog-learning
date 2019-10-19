@@ -2,7 +2,7 @@
 :- use_module(library(http/http_client)).
 :- use_module(library(uri)).
 
-:- use_module(better_bot, [jump/1]).
+:- use_module(better_bot, [jump/1, catch_report_continue/1]).
 :- use_module(eliza, [eliza/2]).
 :- use_module(bf, [process/2]).
 
@@ -106,7 +106,12 @@ reply_to_message(Data, Reply) :-
     reply(Data, DowncaseWords, Reply).
 
 reply(_, DowncaseWords, Reply) :-
-    bf:process(DowncaseWords, Reply).
+    catch_report_continue(
+        call_with_time_limit(
+            5,
+            bf:process(DowncaseWords, Reply)
+        )
+    ).
 reply(_, [!,eliza,on], 'ELIZA mode ON') :-
     retractall(eliza_on),
     assert(eliza_on).
