@@ -45,7 +45,7 @@ process(Program, Output) :-
     run(Parsed, Output).
 
 parse(In, Bf) :-
-    include(interpreted, In, Bf),
+    % include(interpreted, In, Bf),
     phrase(bf, Bf).
 
 run(Parsed, Output) :-
