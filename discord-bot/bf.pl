@@ -15,12 +15,13 @@ go :-
     ).
 
 bf --> [].
-bf --> (command | ignored), bf.
+bf --> command, bf.
+% bf --> ignored, bf.
 
 command --> [C], { command(C) }.
 command --> ['['], bf, [']'].
 
-ignored --> [I], { \+ interpreted(I) }.
+% ignored --> [I], { \+ interpreted(I) }.
 
 command('.').
 command(',').
