@@ -44,9 +44,9 @@ process(Program, Output) :-
     parse(Program, Parsed),
     run(Parsed, Output).
 
-parse(In, Bf) :-
+parse(In, In) :-
     % include(interpreted, In, Bf),
-    phrase(bf, Bf).
+    phrase(bf, In).
 
 run(Parsed, Output) :-
     dll(Parsed, P),
