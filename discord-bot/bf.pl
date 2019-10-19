@@ -76,17 +76,17 @@ execute(',', P, P, S, NewS, O, O) :-
     get_code(In),
     Val #= In mod 126,
     update(S, Val, NewS).
-execute(+, P, P, S, NewS, O, O) :-
+execute('+', P, P, S, NewS, O, O) :-
     cur(Val, S),
     NewVal #= (Val + 1) mod 126,
     update(S, NewVal, NewS).
-execute(-, P, P, S, NewS, O, O) :-
+execute('-', P, P, S, NewS, O, O) :-
     cur(Val, S),
     NewVal #= (Val - 1) mod 126,
     update(S, NewVal, NewS).
-execute(<, P, P, S, NewS, O, O) :-
+execute('<', P, P, S, NewS, O, O) :-
     shift(NewS, S).
-execute(>, P, P, S, NewS, O, O) :-
+execute('>', P, P, S, NewS, O, O) :-
     shift(S, NewS).
 execute('[', P, P, S, S, O, O) :-
     cur(C, S),
