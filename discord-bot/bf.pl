@@ -1,4 +1,5 @@
 :- module(bf, [process/2]).
+:- use_module(library(clpfd)).
 
 read_atomic(Atoms) :-
     read_line_to_string(user_input, Input),
