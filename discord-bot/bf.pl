@@ -25,7 +25,7 @@ command --> ['['], bf, [']'].
 % ignored --> [I], { \+ interpreted(I) }.
 
 command('.').
-command(',').
+% command(',').
 command('>').
 command('<').
 command('+').
@@ -74,10 +74,10 @@ run(P, S, O, Output) :-
 execute('.', P, P, S, S, O, [Atom|O]) :-
     cur(Val, S),
     char_code(Atom, Val).
-execute(',', P, P, S, NewS, O, O) :-
-    get_code(In),
-    Val #= In mod 126,
-    update(S, Val, NewS).
+% execute(',', P, P, S, NewS, O, O) :-
+%     get_code(In),
+%     Val #= In mod 126,
+%     update(S, Val, NewS).
 execute('+', P, P, S, NewS, O, O) :-
     cur(Val, S),
     NewVal #= (Val + 1) mod 126,
