@@ -71,8 +71,8 @@ run(P, S, O, Output) :-
     !,
     (   shift(NextP, NewP)
     ->  run(NewP, NewS, NewO, Output)
-    ;   reverse(NewO, OutputList),
-        atomic_list_concat(OutputList, Output)
+    ;   reverse(['`','`','`'|NewO], OutputList),
+        atomic_list_concat(['`','`','`'|OutputList], Output)
     ).
 
 execute('.', P, P, S, S, O, [Atom|O]) :-
