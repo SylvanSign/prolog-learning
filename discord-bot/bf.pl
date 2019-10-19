@@ -1,5 +1,6 @@
 :- module(bf, [process/2]).
 :- use_module(library(clpfd)).
+:- set_prolog_flag(double_quotes, chars).
 
 read_atomic(Atoms) :-
     read_line_to_string(user_input, Input),
@@ -15,14 +16,16 @@ go :-
         false
     ).
 
+bf_command --> "```", bf, "```".
+
 bf --> [].
 bf --> command, bf.
-% bf --> ignored, bf.
+bf --> ignored, bf.
 
 command --> [C], { command(C) }.
 command --> ['['], bf, [']'].
 
-% ignored --> [I], { \+ interpreted(I) }.
+ignored --> [I], { \+ interpreted(I) }.
 
 command('.').
 % command(',').
@@ -45,9 +48,10 @@ process(Program, Output) :-
     parse(Program, Parsed),
     run(Parsed, Output).
 
-parse(In, In) :-
-    % include(interpreted, In, Bf),
-    phrase(bf, In).
+parse(In, Bf) :-
+    phrase(bf_command, In),
+    include(interpreted, In, Bf),
+    phrase(bf, Bf).
 
 run(Parsed, Output) :-
     dll(Parsed, P),
