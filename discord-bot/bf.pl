@@ -1,3 +1,5 @@
+:- module(bf, [process/2]).
+
 read_atomic(Atoms) :-
     read_line_to_string(user_input, Input),
     tokenize_atom(Input, Atoms).
@@ -7,7 +9,8 @@ go :-
     read_atomic(Program),
     (   Program = [q]
     ->  !
-    ;   process(Program),
+    ;   process(Program, Output),
+        format('Output: ~a~n', [Output]),
         false
     ).
 
@@ -36,24 +39,24 @@ shift(C-L-[R|Rt], R-[C|L]-Rt).
 cur(C, C-_-_).
 update(_-L-R, C, C-L-R).
 
-process(Program) :-
+process(Program, Output) :-
     parse(Program, Parsed),
-    run(Parsed).
+    run(Parsed, Output).
 
 parse(In, Bf) :-
     include(interpreted, In, Bf),
     phrase(bf, Bf).
 
-run(Parsed) :-
+run(Parsed, Output) :-
     dll(Parsed, P),
     length(State, 30000),
     maplist(=(0), State),
     dll(State, S),
-    run(P, S).
+    run(P, S, [], Output).
 
-run(P, S) :-
+run(P, S, O, Output) :-
     cur(C, P),
-    (   execute(C, P, NextP, S, NewS)
+    (   execute(C, P, NextP, S, NewS, O, NewO)
     ->  true
     ;   nl,
         writeln('CRASH'),
@@ -61,42 +64,43 @@ run(P, S) :-
     ),
     !,
     (   shift(NextP, NewP)
-    ->  run(NewP, NewS)
-    ;   nl
+    ->  run(NewP, NewS, NewO, Output)
+    ;   reverse(NewO, OutputList),
+        atomic_list_concat(OutputList, Output)
     ).
 
-execute('.', P, P, S, S) :-
+execute('.', P, P, S, S, O, [Atom|O]) :-
     cur(Val, S),
-    put_code(Val).
-execute(',', P, P, S, NewS) :-
+    char_code(Atom, Val).
+execute(',', P, P, S, NewS, O, O) :-
     get_code(In),
     Val #= In mod 126,
     update(S, Val, NewS).
-execute(+, P, P, S, NewS) :-
+execute(+, P, P, S, NewS, O, O) :-
     cur(Val, S),
     NewVal #= (Val + 1) mod 126,
     update(S, NewVal, NewS).
-execute(-, P, P, S, NewS) :-
+execute(-, P, P, S, NewS, O, O) :-
     cur(Val, S),
     NewVal #= (Val - 1) mod 126,
     update(S, NewVal, NewS).
-execute(<, P, P, S, NewS) :-
+execute(<, P, P, S, NewS, O, O) :-
     shift(NewS, S).
-execute(>, P, P, S, NewS) :-
+execute(>, P, P, S, NewS, O, O) :-
     shift(S, NewS).
-execute('[', P, P, S, S) :-
+execute('[', P, P, S, S, O, O) :-
     cur(C, S),
     dif(0, C).
-execute('[', P, NewP, S, S) :-
+execute('[', P, NewP, S, S, O, O) :-
     cur(0, S),
     shift(P, NextP),
     shift_to_close(NextP, NewP).
-execute(']', P, NewP, S, S) :-
+execute(']', P, NewP, S, S, O, O) :-
     cur(C, S),
     dif(0, C),
     shift(PrevP, P),
     shift_to_open(PrevP, NewP).
-execute(']', P, P, S, S) :-
+execute(']', P, P, S, S, O, O) :-
     cur(0, S).
 
 shift_to_close(P, P) :-

@@ -4,6 +4,7 @@
 
 :- use_module(better_bot, [jump/1]).
 :- use_module(eliza, [eliza/2]).
+:- use_module(bf, [process/2]).
 
 :- dynamic apparently_is/2.
 :- dynamic eliza_on/0.
@@ -104,7 +105,9 @@ reply_to_message(Data, Reply) :-
     writeln(DowncaseWords),
     reply(Data, DowncaseWords, Reply).
 
-reply(_Data, [!,eliza,on], 'ELIZA mode ON') :-
+reply(_, DowncaseWords, Reply) :-
+    bf:process(DowncaseWords, Reply).
+reply(_, [!,eliza,on], 'ELIZA mode ON') :-
     retractall(eliza_on),
     assert(eliza_on).
 reply(_, [!,eliza,off], 'ELIZA mode OFF') :-
