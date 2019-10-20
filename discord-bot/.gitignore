@@ -1,3 +1,4 @@
-/start.sh
+/start_adama.sh
+/start_conductor.sh
 *.log
 *.pdf
