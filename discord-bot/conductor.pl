@@ -18,14 +18,11 @@ train_talk_reply -->
       "I ", ("_really_ " | ""), "like trains"
     | "Do you guys not have trains?"
     | "I'm down for trains"
+    | "My trains are a bit rusty"
     | "Are we train boys?"
+    | "https://youtu.be/y7h4OtFDnYE" % trains on track
     | "I always order my lattes with extra foam"
-    | "CHOO CHOO!"
-    | "https://i.imgur.com/Dj41lVH.png" % TRAIIINS zombie
-    | "https://i.imgur.com/e73ECMO.jpg" % are you not into trains?
-    | "https://youtu.be/1oJAVJPX0YY"    % train sounds
-    | "https://youtu.be/g_4RT0We1F8"    % virtual railfan
-    | "https://youtu.be/2dmaWjY98iY".    % winter train ride
+    | "CHOO CHOO!".
 
 at_foamer --> [<,@,635274576904978442,>].
 
@@ -49,6 +46,7 @@ reply_to_message(Data, Reply) :-
 reply(DowncaseWords, Reply) :-
     phrase(train_talk, TrainTalk),
     sublist(TrainTalk, DowncaseWords),
+    maybe(0.2),
     random_phrase(train_talk_reply, Reply).
 reply(DowncaseWords, Reply) :-
     phrase(at_foamer, AtFoamer),
