@@ -145,12 +145,12 @@ reply(_Data, DowncaseWords, Reply) :-
 reply(_Data, DowncaseWords, Reply) :-
     phrase(uncertainty, UncertainPhrase),
     sublist(UncertainPhrase, DowncaseWords),
-    maybe(0.2),
+    maybe(0.05),
     Reply = 'Sometimes you gotta roll the hard six.'.
 reply(_Data, DowncaseWords, Reply) :-
     bad(Bad),
     member(Bad, DowncaseWords),
-    maybe(0.2),
+    maybe(0.05),
     Reply = 'PULL YOURSELF TOGETHER!'.
 reply(_Data, DowncaseWords, Reply) :-
     phrase(query_apparently_is(Subject), DowncaseWords),
