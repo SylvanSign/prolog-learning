@@ -28,6 +28,13 @@ tile(16, green, plain-0, [plain(0, 2), plain(1, 3)]).
 tile(18, green, plain-0, [plain(0, 3), plain(1, 2)]).
 tile(19, green, plain-0, [plain(0, 2), plain(1, 4)]).
 tile(20, green, plain-0, [plain(0, 3), plain(2, 5)]).
+tile(23, green, plain-0, [plain(0, 3), plain(0, 4)]).
+tile(24, green, plain-0, [plain(0, 3), plain(0, 2)]).
+tile(25, green, plain-0, [plain(0, 2), plain(0, 4)]).
+tile(26, green, plain-0, [plain(0, 3), plain(0, 5)]).
+tile(27, green, plain-0, [plain(0, 1), plain(0, 3)]).
+tile(28, green, plain-0, [plain(0, 4), plain(0, 5)]).
+tile(29, green, plain-0, [plain(0, 1), plain(0, 2)]).
 
 tile_upgrade(B, U) :-
     B=tile(_, BColor, Type-_, BTrack),
@@ -37,12 +44,13 @@ tile_upgrade(B, U) :-
     color_upgrade(BColor, UColor),
     track_upgrade(Type, BTrack, UTrack).
 
+color_upgrade(none, yellow).
 color_upgrade(yellow, green).
 color_upgrade(green, brown).
 color_upgrade(brown, grey).
 
 
-track_upgrade(plain-0, B, U) :-
+track_upgrade(plain, B, U) :-
     station_upgrade(B, U).
 
 track_upgrade(Type, B, U) :-
