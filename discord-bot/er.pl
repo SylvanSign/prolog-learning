@@ -4,15 +4,18 @@
 :- use_module(library(clpfd)).
 :- use_module(library(dcg/basics)).
 
-er, CapitalizedWithoutEr, "er? I hardly know her!" -->
+er, CapitalizedWithoutEr, ErSound, "? I hardly know her!" -->
   prefix,
   without_er(WithoutEr),
-  { length(WithoutEr, L), L #> 0, dif(WithoutEr, "her") },
-  string("er"),
+  { length(WithoutEr, L), L #> 1 },
+  er_sound(ErSound),
   ender,
   {
     capitalized(WithoutEr, CapitalizedWithoutEr)
   }.
+
+er_sound("er") --> string("er").
+er_sound("or") --> string("or").
 
 capitalized(String, Capitalized) :-
   String = [First|Rest],
