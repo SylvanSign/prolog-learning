@@ -34,11 +34,18 @@ ender -->
   remainder(_).
 ender --> "".
 
+good_character(C) -->
+  [C],
+  { char_code(C, Code),
+    Code #>= 65,
+    Code #=< 122
+  }.
+
 prefix --> nonblanks(_), blank, prefix.
 prefix --> [].
 
-without_er([C]) --> nonblank(C).
-without_er([C|Rest]) --> nonblank(C), without_er(Rest).
+without_er([C]) --> good_character(C).
+without_er([C|Rest]) --> good_character(C), without_er(Rest).
 
 reply(In) :-
   once(phrase(er, In, Rest)),
