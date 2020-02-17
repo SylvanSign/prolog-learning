@@ -5,7 +5,7 @@
 :- use_module(better_bot, [jump/1, catch_report_continue/1]).
 :- use_module(eliza, [eliza/2]).
 :- use_module(bf, [process/2]).
-:- use_module(er, [er//0]).
+:- use_module(er, [joke_er/2, joke_list/1]).
 
 :- dynamic apparently_is/2.
 :- dynamic eliza_on/0.
@@ -118,6 +118,9 @@ reply(_, [!,eliza,on], 'ELIZA mode ON') :-
     assert(eliza_on).
 reply(_, [!,eliza,off], 'ELIZA mode OFF') :-
     retractall(eliza_on).
+reply(_, [!,jokes], Reply) :-
+  joke_list(Reply).
+
 reply(Data, _DowncaseWords, Gif) :-
     string_chars(Data.content, ContentChars),
     phrase(translate_to_gif(Phrase), ContentChars),
@@ -165,7 +168,7 @@ reply(_Data, DowncaseWords, Reply) :-
     Reply = 'Thank you. I now understand the lore better.'.
 reply(Data, _DowncaseWords, Reply) :-
     string_chars(Data.content, ContentChars),
-    phrase(er, ContentChars, Phrase),
+    joke_er(ContentChars, Phrase),
     atomic_list_concat(Phrase, Reply).
 
 bad(sorry).
