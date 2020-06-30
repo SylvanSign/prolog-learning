@@ -461,7 +461,6 @@ train_phrase('MUTT AND JEFF PUMP', 'Denver & Rio Grande locomotive with big air 
 train_phrase('MUZZLE LOADER', 'Hand-fired locomotive').
 train_phrase('NEWS BUTCHER', 'Peddler who sells magazines, candy, fruit, ''etc., in trains. Usually employed nowadays by Union News Co. Thomas A. Edison, the inventor, was a news butcher in his youth and became deaf when a conductor boxed his ears for accidentally starting a fire while experimenting in a baggage car near Smith Creek, Mich.').
 train_phrase('NICKEL GRABBER', 'Streetcar conductor').
-train_phrase('NIGGERHEAD', 'Turret at top of locomotive boiler, over crown sheet, from which saturated steam is taken for operation of pumps, stoker, injectors, and headlight turbine').
 train_phrase('19 ORDER', 'Train order that does not have to be signed for. Operator can hand it on a hoop or delivery fork as the train slows down. (See 31 order)').
 train_phrase('99', 'Failure to protect your train or to flag it').
 train_phrase('NO-BILL', 'Nonunion or nonbrotherhood railroad worker. Also called nonair').
