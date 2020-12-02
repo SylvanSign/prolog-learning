@@ -7,10 +7,9 @@ twitter(MessageWithTwitterLink, NitterReply) :-
   phrase(twitter_nitter(NitterReply), MessageWithTwitterLink).
 
 twitter_nitter(NitterUrl) -->
-  string(_StartOfMessage),
-  protocol, "://", subdomain, "twitter.com", string_without(" ", RestOfUrl),
-  remainder(_RestOfMessage),
-  { format(atom(NitterUrl), 'https://nitter.net~s', [RestOfUrl]) }.
+  string(StartOfMessage),
+  protocol, "://", subdomain, "twitter.com", remainder(EndOfMessage),
+  { format(atom(NitterUrl), '~shttps://nitter.net~s', [StartOfMessage, EndOfMessage]) }.
 
 protocol --> "http", ("s" | "").
 
