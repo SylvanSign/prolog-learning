@@ -6,6 +6,7 @@
 :- use_module(eliza, [eliza/2]).
 :- use_module(bf, [process/2]).
 :- use_module(er, [joke_er/2, joke_list/1]).
+:- use_module(twitter_nitter, [twitter/2]).
 
 :- dynamic apparently_is/2.
 :- dynamic eliza_on/0.
@@ -61,11 +62,6 @@ teach_apparently_is(X, AllThings) -->
         list_things(AllThings, ThingsList)
     },
     [X,is|ThingsList].
-
-adama_gif -->
-    whatever,
-    [gif],
-    whatever.
 
 translate_to_gif(Phrase) -->
     """", something(Phrase), """".
@@ -126,12 +122,13 @@ reply(Data, _DowncaseWords, Gif) :-
     phrase(translate_to_gif(Phrase), ContentChars),
     atomic_list_concat(Phrase, PhraseAtom),
     giphy_translate(PhraseAtom, Gif).
+reply(Data, _DowncaseWords, Reply) :-
+    string_chars(Data.content, ContentChars),
+    maplist(downcase_atom, ContentChars, DowncaseChars),
+    twitter(DowncaseChars, Reply).
 reply(_Data, DowncaseWords, Url) :-
     phrase(wc3_lookup(UnitWords), DowncaseWords),
     wc3_wiki(UnitWords, Url).
-reply(_Data, DowncaseWords, Gif) :-
-    phrase(adama_gif, DowncaseWords),
-    random_gif(Gif).
 reply(_Data, DowncaseWords, Reply) :-
     eliza_on,
     eliza(DowncaseWords, ReplyWords),
@@ -168,8 +165,13 @@ reply(_Data, DowncaseWords, Reply) :-
     Reply = 'Thank you. I now understand the lore better.'.
 reply(Data, _DowncaseWords, Reply) :-
     string_chars(Data.content, ContentChars),
-    joke_er(ContentChars, Phrase),
+    maplist(downcase_atom, ContentChars, DowncaseChars),
+    joke_er(DowncaseChars, Phrase),
     atomic_list_concat(Phrase, Reply).
+reply(_Data, DowncaseWords, Reply) :-
+    member(interesting, DowncaseWords),
+    maybe(0.25),
+    Reply = 'That''s INTeresting'.
 
 bad(sorry).
 bad(inted).
@@ -197,21 +199,22 @@ my_downcase(Token, Word) :-
     downcase_atom(Token, Word).
 
 
-giphy_random('https://api.giphy.com/v1/gifs/random').
-random_gif(Gif) :-
-    getenv(giphy, Key),
-    giphy_random(UrlPrefix),
-    uri_query_components(QueryString, [
-        api_key=Key,
-        tag='bsg+battlestar+galactica',
-        rating='R'
-    ]),
-    atomic_list_concat([UrlPrefix, ?, QueryString], Url),
-    http_get(Url,
-             Data,
-             [status_code(Status), json_object(dict)]),
-    Status = 200,
-    Gif = Data.data.url.
+% % giphy_random/1 and random_gif/1 are no longer used, but I'm keeping the code for fun
+% giphy_random('https://api.giphy.com/v1/gifs/random').
+% random_gif(Gif) :-
+%     getenv(giphy, Key),
+%     giphy_random(UrlPrefix),
+%     uri_query_components(QueryString, [
+%         api_key=Key,
+%         tag='bsg+battlestar+galactica',
+%         rating='R'
+%     ]),
+%     atomic_list_concat([UrlPrefix, ?, QueryString], Url),
+%     http_get(Url,
+%              Data,
+%              [status_code(Status), json_object(dict)]),
+%     Status = 200,
+%     Gif = Data.data.url.
 
 giphy_translate('https://api.giphy.com/v1/gifs/translate').
 giphy_translate(Words, Gif) :-
