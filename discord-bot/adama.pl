@@ -124,8 +124,7 @@ reply(Data, _DowncaseWords, Gif) :-
     giphy_translate(PhraseAtom, Gif).
 reply(Data, _DowncaseWords, Reply) :-
     string_chars(Data.content, ContentChars),
-    maplist(downcase_atom, ContentChars, DowncaseChars),
-    twitter(DowncaseChars, Reply).
+    twitter(ContentChars, Reply).
 reply(_Data, DowncaseWords, Url) :-
     phrase(wc3_lookup(UnitWords), DowncaseWords),
     wc3_wiki(UnitWords, Url).
