@@ -104,7 +104,7 @@ handle_op0_event(What, _, Data) :-
     * writeln(Data).
 
 reply(ReplyCallback, Data) :-
-    format(string(URL), "https://discord.com/api/channels/~s/messages", [Data.channel_id]),
+    format(string(URL), "https://discordapp.com/api/channels/~s/messages", [Data.channel_id]),
     getenv(token, Token),
     format(string(AuthHeader), "Bot ~s", [Token]),
     Options = [request_header(authorization=AuthHeader)],
@@ -188,7 +188,7 @@ listener(WebSocket) :-
        listener(WebSocket)
     ).
 
-api_url('https://discord.com/api/gateway').
+api_url('https://discordapp.com/api/gateway').
 
 gateway_url(Url) :-
     api_url(Api),
