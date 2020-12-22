@@ -18,7 +18,7 @@ train_talk_reply -->
     | "I always order my lattes with extra foam"
     | "CHOO CHOO!".
 
-at_foamer --> "<,@", extra, id, ">".
+at_foamer --> "<@", extra, id, ">".
 extra --> "" | "!" | "&".
 id --> [635274576904978442] | [635303518361616384].
 
