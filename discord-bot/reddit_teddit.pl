@@ -13,4 +13,4 @@ reddit_teddit(TedditUrl) -->
 
 protocol --> "http", ("s" | "").
 
-subdomain --> "" | "old." | "i." | "m.".
+subdomain --> "" | "www." | "old." | "i." | "m.".
