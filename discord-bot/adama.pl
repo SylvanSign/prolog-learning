@@ -9,6 +9,7 @@
 :- use_module(twitter_nitter, [twitter/2]).
 :- use_module(reddit_teddit, [reddit/2]).
 :- use_module(youtube_invidious, [youtube/2]).
+:- use_module(christmas, [tree/1]).
 
 :- dynamic apparently_is/2.
 :- dynamic eliza_on/0.
@@ -112,6 +113,8 @@ reply(_, [!,eliza,off], 'ELIZA mode OFF') :-
     retractall(eliza_on).
 reply(_, [!,jokes], Reply) :-
   joke_list(Reply).
+reply(_, [!,tree], Tree) :-
+    tree(Tree).
 
 reply(Data, _DowncaseWords, Gif) :-
     string_chars(Data.content, ContentChars),
