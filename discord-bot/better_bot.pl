@@ -86,11 +86,9 @@ handle_discord_message(11, _, _, _, _, true).
 handle_discord_message(0, ReplyCallback, D, T, Acked, Acked) :-
     handle_op0_event(T, ReplyCallback, D).
 
-handle_op0_event("GUILD_CREATE", _, Data) :-
-    Name = Data.name.
 handle_op0_event("MESSAGE_CREATE", ReplyCallback, Data) :-
     catch_report_continue(reply(ReplyCallback, Data)).
-handle_op0_event(What, _, Data).
+handle_op0_event(_, _, _).
 
 reply(ReplyCallback, Data) :-
     format(string(URL), "https://discord.com/api/channels/~s/messages", [Data.channel_id]),
