@@ -3,12 +3,6 @@
 :- use_module(better_bot, [jump/1]).
 :- use_module(train_jargon, [random_train_definition/2]).
 
-% TODO remove these; for debugging only
-:- debug.
-:- debug(websocket).
-:- op(920,fy, *).
-*_.
-
 start :-
     jump(reply_to_message).
 

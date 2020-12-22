@@ -7,11 +7,6 @@
 :- use_module(library(http/json_convert)).
 :- use_module(library(prolog_stack)).
 
-
-% TODO remove this; for debugging only
-:- op(920,fy, *).
-*_.
-
 send_json(WebSocket, Payload) :-
     ws_send(WebSocket, Payload).
 
@@ -19,11 +14,13 @@ receive_json(WebSocket, Response) :-
     ws_receive(WebSocket, Response, [format(json)]).
 
 jump(ReplyCallback) :-
-    connect(WebSocket),
-    identify(WebSocket, SessionId, S),
-    create_listener(WebSocket),
     catch_with_backtrace(
-        main(ReplyCallback, SessionId, WebSocket, S, true),
+        (
+            connect(WebSocket),
+            identify(WebSocket, SessionId, S),
+            create_listener(WebSocket),
+            main(ReplyCallback, SessionId, WebSocket, S, true)
+        ),
         Error,
         print_message(error, Error)
     ),
@@ -65,7 +62,6 @@ main(ReplyCallback, SessionId, WebSocket, S, LastHeartbeatAcked) :-
     main(ReplyCallback, NewSessionId, NewWebSocket, NewS, HeartbeatAcked).
 
 handle_message(heartbeat, _, SessionId, s(WebSocket, S, true), s(WebSocket, S, false, SessionId)) :-
-    * writeln('handling heartbeat message'),
     op(heartbeat, Op),
     generic_payload(Op, S, Payload),
     send_json(WebSocket, Payload).
@@ -83,25 +79,18 @@ handle_message(close, _, _, _, s(NewWebSocket, S, true, NewSessionId)) :-
     resume(NewWebSocket, NewSessionId, S).
 handle_message(discord(M), ReplyCallback, SessionId, s(W,_,LastAcked), s(W,S,Acked, SessionId)) :-
     dispatch_payload(Op, D, S, T, M),
-    * format('got discord ~p Op ~p~n', [T, Op]),
     handle_discord_message(Op, ReplyCallback, D, T, LastAcked, Acked).
-handle_message(_, _, _, _, _) :-
-    * writeln('handling unknown message').
+handle_message(_, _, _, _, _).
 
 handle_discord_message(11, _, _, _, _, true).
 handle_discord_message(0, ReplyCallback, D, T, Acked, Acked) :-
     handle_op0_event(T, ReplyCallback, D).
 
 handle_op0_event("GUILD_CREATE", _, Data) :-
-    Name = Data.name,
-    * writeln(Name).
+    Name = Data.name.
 handle_op0_event("MESSAGE_CREATE", ReplyCallback, Data) :-
-    * prolog_pretty_print:print_term(Data, []),
     catch_report_continue(reply(ReplyCallback, Data)).
-handle_op0_event(What, _, Data) :-
-    * writeln('Unknown Op0 Event'),
-    * writeln(What),
-    * writeln(Data).
+handle_op0_event(What, _, Data).
 
 reply(ReplyCallback, Data) :-
     format(string(URL), "https://discord.com/api/channels/~s/messages", [Data.channel_id]),

@@ -2,10 +2,9 @@
 
 random_train_definition(Phrase, Definition) :-
     source_file_property(train_jargon, number_of_clauses(PhraseCount)),
-    N is random(PhraseCount) + 1,
+    N is random(PhraseCount - 1) + 1,
     nth_clause(train_phrase(_,_), N, Ref),
     clause(train_phrase(Phrase, Definition), _, Ref).
-
 
 train_phrase('AGE', 'Seniority, length of service').
 train_phrase('AIR MONKEY', 'Air-brake repairman').

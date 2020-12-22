@@ -7,15 +7,11 @@
 :- use_module(bf, [process/2]).
 :- use_module(er, [joke_er/2, joke_list/1]).
 :- use_module(twitter_nitter, [twitter/2]).
+:- use_module(reddit_teddit, [reddit/2]).
+:- use_module(youtube_invidious, [youtube/2]).
 
 :- dynamic apparently_is/2.
 :- dynamic eliza_on/0.
-
-% TODO remove these; for debugging only
-:- debug.
-:- debug(websocket).
-:- op(920,fy, *).
-*_.
 
 start :-
     jump(reply_to_message).
@@ -125,6 +121,12 @@ reply(Data, _DowncaseWords, Gif) :-
 reply(Data, _DowncaseWords, Reply) :-
     string_chars(Data.content, ContentChars),
     twitter(ContentChars, Reply).
+reply(Data, _DowncaseWords, Reply) :-
+    string_chars(Data.content, ContentChars),
+    reddit(ContentChars, Reply).
+reply(Data, _DowncaseWords, Reply) :-
+    string_chars(Data.content, ContentChars),
+    youtube(ContentChars, Reply).
 reply(_Data, DowncaseWords, Url) :-
     phrase(wc3_lookup(UnitWords), DowncaseWords),
     wc3_wiki(UnitWords, Url).
