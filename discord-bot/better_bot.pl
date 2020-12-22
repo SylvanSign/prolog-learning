@@ -165,9 +165,7 @@ heartbeat_seconds(WebSocket, HeartbeatSeconds) :-
 
 listener(WebSocket) :-
     \+ thread_peek_message(kill),
-    writeln('BEGIN receive_json'),
     receive_json(WebSocket, Response),
-    writeln('END receive_json'),
     (  Response.opcode == close
     -> thread_send_message(main, close)
     ;  thread_send_message(main, discord(Response)),
