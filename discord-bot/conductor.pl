@@ -18,7 +18,7 @@ train_talk_reply -->
     | "I always order my lattes with extra foam"
     | "CHOO CHOO!".
 
-at_foamer --> [<,@,635274576904978442,>].
+at_foamer --> [<,@,(!|""),635274576904978442,>].
 
 random_phrase(Grammar, Phrase) :-
     bagof(P, phrase(Grammar, P), Phrases),
