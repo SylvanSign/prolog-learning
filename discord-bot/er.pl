@@ -3,11 +3,16 @@
 :- set_prolog_flag(double_quotes, chars).
 :- use_module(library(clpfd)).
 :- use_module(library(dcg/basics)).
+:- use_module(library(persistency)).
 
-:- dynamic jokes/1.
+:- persistent
+    joke(joke:list(atom)).
+
+:- initialization db_attach('/var/lib/adama/jokes.pl', []).
+
 
 joke_list(Reply) :-
-  (  bagof(Joke, jokes(Joke), RawJokes)
+  (  bagof(Joke, joke(Joke), RawJokes)
   -> maplist(atomic_list_concat, RawJokes, Jokes),
      atomic_list_concat([''|Jokes], '\n- ', F),
      atom_concat('I\'ve made jokes about', F, Reply)
@@ -20,22 +25,27 @@ joke_er(Chars, Phrase) :-
   novel_joke(Trigger).
 
 novel_joke(Trigger) :-
-  not(jokes(Trigger)),
-  asserta(jokes(Trigger)).
+  \+ joke(Trigger),
+  assert_joke(Trigger).
 
-er(Trigger), CapitalizedWithoutEr, ErSound, "? I hardly know her!" -->
+er(Trigger), CapitalizedTrigger, "? I hardly know her!" -->
   prefix,
-  without_er(WithoutEr),
-  { length(WithoutEr, L), L #> 1 },
-  er_sound(ErSound),
+  trigger(Trigger),
   ender,
   {
-    capitalized(WithoutEr, CapitalizedWithoutEr),
+    capitalized(Trigger, CapitalizedTrigger)
+  }.
+
+trigger(Trigger) -->
+  without_er(WithoutEr),
+  er_sound(ErSound),
+  {
     append(WithoutEr, ErSound, Trigger)
   }.
 
 er_sound("er") --> string("er").
 er_sound("or") --> string("or").
+er_sound("ar") --> string("ar").
 
 capitalized(String, Capitalized) :-
   String = [First|Rest],
@@ -64,5 +74,6 @@ good_character(C) -->
 prefix --> nonblanks(_), blank, prefix.
 prefix --> [].
 
+without_er([]) --> [].
 without_er([C]) --> good_character(C).
 without_er([C|Rest]) --> good_character(C), without_er(Rest).
