@@ -14,6 +14,7 @@ receive_json(WebSocket, Response) :-
     ws_receive(WebSocket, Response, [format(json)]).
 
 jump(ReplyCallback) :-
+    writeln('Mr. Gaeta, execute jump.'),
     catch_with_backtrace(
         (
             connect(WebSocket),
@@ -24,6 +25,7 @@ jump(ReplyCallback) :-
         Error,
         print_message(error, Error)
     ),
+    writeln('Recover fighters. Stand by to jump.'),
     kill_threads,
     !,
     jump(ReplyCallback).
@@ -35,7 +37,8 @@ connect(WebSocket) :-
     gateway_url(Url),
     http_open_websocket(Url, WebSocket, []),
     heartbeat_seconds(WebSocket, HeartbeatSeconds),
-    thread_create(heartbeat(HeartbeatSeconds), _, [alias(heartbeat)]).
+    format('My heart beats every ~f seconds.~n', [HeartbeatSeconds]),
+    thread_create(heartbeat(HeartbeatSeconds, 0), _, [alias(heartbeat)]).
 
 identify(WebSocket, SessionId, S) :-
     getenv(token, Token),
@@ -43,7 +46,7 @@ identify(WebSocket, SessionId, S) :-
         token: Token,
         compress: false,
         properties: _{
-            '$os': windows,
+            '$os': 'GNU + Linux',
             '$browser': adama,
             '$device': adama
         }
@@ -62,12 +65,13 @@ main(ReplyCallback, SessionId, WebSocket, S, LastHeartbeatAcked) :-
     main(ReplyCallback, NewSessionId, NewWebSocket, NewS, HeartbeatAcked).
 
 handle_message(heartbeat, _, SessionId, s(WebSocket, S, true), s(WebSocket, S, false, SessionId)) :-
+    writeln('my heart beats true'),
     op(heartbeat, Op),
     generic_payload(Op, S, Payload),
     send_json(WebSocket, Payload).
 handle_message(heartbeat, _, SessionId, s(WebSocket,  S, false), s(NewWebSocket, S, true, SessionId)) :-
     writeln('last heartbeat went unacked. Resuming...'),
-    ws_close(WebSocket, 9000, ack_missed),
+    catch_report_continue(ws_close(WebSocket, 9000, ack_missed)),
     kill_threads,
     connect(NewWebSocket),
     create_listener(NewWebSocket),
@@ -153,15 +157,22 @@ op(heartbeat, 1).
 op(identify, 2).
 op(resume, 6).
 
-heartbeat(HeartbeatSeconds) :-
-    sleep(HeartbeatSeconds),
+heartbeat(HeartbeatSeconds, SoFar0) :-
     \+ thread_peek_message(kill),
-    thread_send_message(main, heartbeat),
-    heartbeat(HeartbeatSeconds).
+    SleepSeconds is 1,
+    sleep(SleepSeconds),
+    SoFar1 is SoFar0 + SleepSeconds,
+    stuff(HeartbeatSeconds, SoFar1, SoFar),
+    heartbeat(HeartbeatSeconds, SoFar).
+
+stuff(HeartbeatSeconds, SoFar, SoFar) :-
+    SoFar < HeartbeatSeconds, !.
+stuff(_, _, 0) :-
+    thread_send_message(main, heartbeat).
 
 heartbeat_seconds(WebSocket, HeartbeatSeconds) :-
     receive_json(WebSocket, Response),
-    HeartbeatSeconds is Response.data.d.heartbeat_interval / 1_000.
+    HeartbeatSeconds is Response.data.d.heartbeat_interval / 1_000 - 8. % do we need to `- 8`?
 
 listener(WebSocket) :-
     \+ thread_peek_message(kill),
